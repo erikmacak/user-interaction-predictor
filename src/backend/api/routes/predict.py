@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException
+
 from schemas.predict import PredictActionRequest, PredictActionResponse
 from services.video_parser import VideoParserService
+from services.predictor.registry import PredictorRegistry
 
 router = APIRouter()
 
@@ -11,10 +13,10 @@ router = APIRouter()
 def predict_action(payload: PredictActionRequest) -> PredictActionResponse:
     try:
         video_source = VideoParserService.parse(str(payload.video_url))
+        predictor = PredictorRegistry.get("v1")
+        predicted_action = predictor.predict(video_source)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
-
-    predicted_action = "like"
 
     return PredictActionResponse(
         platform=video_source.platform,
