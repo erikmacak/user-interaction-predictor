@@ -1,7 +1,13 @@
 from fastapi import FastAPI
+from api.routes.predict import router as predict_router
 
-app = FastAPI()
+app = FastAPI(
+    title="User Interaction Predictor API",
+    version="1.0.0",
+)
 
-@app.get("/")
-def root():
-    return {"status": "ok"}
+app.include_router(
+    predict_router,
+    prefix="/api",
+    tags=["prediction"],
+)
