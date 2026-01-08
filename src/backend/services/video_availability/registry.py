@@ -8,7 +8,7 @@ from services.video_availability.youtube import YouTubeAvailabilityService
 
 class VideoAvailabilityRegistry:
     _services: Dict[VideoPlatform, BaseVideoAvailabilityService] = {
-        VideoPlatform.INSTAGRAM: InstagramAvailabilityService(),
+        #VideoPlatform.INSTAGRAM: InstagramAvailabilityService(),
         VideoPlatform.TIKTOK: TikTokAvailabilityService(),
         VideoPlatform.YOUTUBE: YouTubeAvailabilityService(),
     }
