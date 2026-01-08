@@ -2,9 +2,13 @@ from abc import ABC, abstractmethod
 from typing import Any
 
 from domain.video import VideoSource
+from services.video_availability.registry import VideoAvailabilityRegistry
 
 class BasePredictor(ABC):
     def predict(self, video_source: VideoSource) -> str:
+        if not VideoAvailabilityRegistry.exists(video_source):
+            raise ValueError("Video does not exist on the platform")
+
         data = self._extract_data(video_source)
         return self._predict_from_data(data)
 
