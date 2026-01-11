@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, List
 
 from domain.video import VideoSource
+from domain.action import PredictedActionType
 from services.video_availability.registry import VideoAvailabilityRegistry
 
 class BasePredictor(ABC):
-    def predict(self, video_source: VideoSource) -> str:
+    def predict(self, video_source: VideoSource) -> List[PredictedActionType]:
         if not VideoAvailabilityRegistry.exists(video_source):
             raise ValueError("Video does not exist on the platform")
 
@@ -19,5 +20,5 @@ class BasePredictor(ABC):
         }
 
     @abstractmethod
-    def _predict_from_data(self, data: Any) -> str:
+    def _predict_from_data(self, data: Any) -> List[PredictedActionType]:
         raise NotImplementedError
