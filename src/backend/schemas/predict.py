@@ -1,10 +1,12 @@
 from typing import List
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel
 
+from domain.video import VideoPlatform
 from domain.action import PredictedActionType
 
 class PredictActionsRequest(BaseModel):
-    video_url: HttpUrl
+    platform: VideoPlatform
+    video_id: str
 
 class PredictedAction(BaseModel):
     action: PredictedActionType

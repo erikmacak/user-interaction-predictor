@@ -5,7 +5,7 @@ from schemas.predict import (
     PredictActionsResponse,
     PredictedAction,
 )
-from services.video_parser import VideoParserService
+from domain.video import VideoSource
 from services.predictor.registry import PredictorRegistry
 
 router = APIRouter()
@@ -16,7 +16,10 @@ router = APIRouter()
 )
 def predict_actions(payload: PredictActionsRequest) -> PredictActionsResponse:
     try:
-        video_source = VideoParserService.parse(str(payload.video_url))
+        video_source = VideoSource(
+            platform=payload.platform,
+            video_id=payload.video_id,
+        )
         predictor = PredictorRegistry.get("v1")
         predicted_actions = predictor.predict(video_source)
     except ValueError as exc:

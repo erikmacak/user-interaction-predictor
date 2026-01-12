@@ -10,4 +10,3 @@ class VideoPlatform(str, Enum):
 class VideoSource:
     platform: VideoPlatform
     video_id: str
-    canonical_url: str
