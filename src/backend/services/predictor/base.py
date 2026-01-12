@@ -4,11 +4,12 @@ from typing import Any, List
 from domain.video import VideoSource
 from domain.action import PredictedActionType
 from services.video_availability.registry import VideoAvailabilityRegistry
+from domain.errors import VideoNotFoundError
 
 class BasePredictor(ABC):
     def predict(self, video_source: VideoSource) -> List[PredictedActionType]:
         if not VideoAvailabilityRegistry.exists(video_source):
-            raise ValueError("Video does not exist on the platform")
+            raise VideoNotFoundError(video_source.platform)
 
         data = self._extract_data(video_source)
         return self._predict_from_data(data)

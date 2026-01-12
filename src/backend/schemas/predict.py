@@ -8,6 +8,9 @@ class PredictActionsRequest(BaseModel):
     platform: VideoPlatform
     video_id: str
 
+    class Config:
+        extra = "forbid" 
+
 class PredictedAction(BaseModel):
     action: PredictedActionType
 
