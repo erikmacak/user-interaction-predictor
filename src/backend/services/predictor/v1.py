@@ -68,9 +68,13 @@ class PredictorV1(BasePredictor):
         self,
         actions: List[PredictedActionType],
     ) -> List[PredictedActionType]:
-        
+
         has_finish = PredictedActionType.FINISH_WATCHING in actions
         has_rewatch = PredictedActionType.REWATCH in actions
+
+        if has_rewatch and not has_finish:
+            actions = [a for a in actions if a != PredictedActionType.REWATCH]
+            has_rewatch = False
 
         engagement_actions = [
             action
@@ -93,9 +97,7 @@ class PredictorV1(BasePredictor):
 
         for action in engagement_actions:
             bucket = random.choice(
-                ["before", "between", "after"]
-                if has_rewatch
-                else ["before", "after"]
+                ["before", "between", "after"] if has_rewatch else ["before", "after"]
             )
 
             if bucket == "before":
@@ -118,6 +120,6 @@ class PredictorV1(BasePredictor):
         ordered.extend(after_rewatch)
 
         if PredictedActionType.SKIP in actions:
-            ordered.append(PredictedActionType.SKIP)
+            ordered = [a for a in ordered if a != PredictedActionType.SKIP] + [PredictedActionType.SKIP]
 
         return ordered

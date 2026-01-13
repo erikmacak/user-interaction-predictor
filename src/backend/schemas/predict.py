@@ -1,5 +1,5 @@
 from typing import List
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from domain.video import VideoPlatform
 from domain.action import PredictedActionType
@@ -8,8 +8,9 @@ class PredictActionsRequest(BaseModel):
     platform: VideoPlatform
     video_id: str
 
-    class Config:
-        extra = "forbid" 
+    model_config = ConfigDict(
+        extra="forbid"
+    )
 
 class PredictedAction(BaseModel):
     action: PredictedActionType
