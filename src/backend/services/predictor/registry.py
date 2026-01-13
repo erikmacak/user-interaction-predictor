@@ -2,6 +2,7 @@ from typing import Dict
 
 from services.predictor.base import BasePredictor
 from services.predictor.v1 import PredictorV1
+from domain.errors import UnsupportedPredictorVersionError
 
 class PredictorRegistry:
     _predictors: Dict[str, BasePredictor] = {
@@ -10,7 +11,10 @@ class PredictorRegistry:
 
     @classmethod
     def get(cls, version: str) -> BasePredictor:
-        try:
-            return cls._predictors[version]
-        except KeyError:
-            raise ValueError(f"Unsupported predictor version: {version}")
+        if version not in cls._predictors:
+            raise UnsupportedPredictorVersionError(
+                version=version,
+                supported_versions=list(cls._predictors.keys()),
+            )
+
+        return cls._predictors[version]
