@@ -8,7 +8,7 @@ def test_predict_endpoint_happy_path():
     response = client.post(
         "/api/predict_actions",
         json={
-            "platform": "youtube",
+            "platform": "YouTube",
             "video_id": "sTh2x0yaRyU"
         },
     )

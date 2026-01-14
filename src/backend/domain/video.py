@@ -2,9 +2,9 @@ from dataclasses import dataclass
 from enum import Enum
 
 class VideoPlatform(str, Enum):
-    INSTAGRAM = "instagram"
-    TIKTOK = "tiktok"
-    YOUTUBE = "youtube"
+    INSTAGRAM = "Instagram"
+    TIKTOK = "TikTok"
+    YOUTUBE = "YouTube"
 
 @dataclass(frozen=True)
 class VideoSource:

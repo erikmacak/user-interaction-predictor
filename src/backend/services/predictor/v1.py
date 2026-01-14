@@ -5,6 +5,13 @@ from domain.action import PredictedActionType
 from services.predictor.base import BasePredictor
 
 class PredictorV1(BasePredictor):
+    """
+    First experimental predictor implementation.
+
+    Generates a realistic sequence of user interactions
+    based on probabilistic group selection and ordering rules.
+    """
+
     GROUP_PROBABILITIES = {
         "engagement": 0.65,
         "consumption": 0.35,

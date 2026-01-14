@@ -1,1 +1,0 @@
-PREDICTOR_VERSION = "v1"

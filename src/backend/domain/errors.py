@@ -16,7 +16,14 @@ class VideoNotFoundError(DomainError):
     def __init__(self, platform: VideoPlatform):
         self.platform = platform
         super().__init__(
-            f"Video does not exist on platform '{platform.value}'."
+            f"Video with provided video_id does not exist on platform '{platform.value}'."
+        )
+
+class VideoAvailabilityNotImplementedError(DomainError):
+    def __init__(self, platform: VideoPlatform):
+        self.platform = platform
+        super().__init__(
+            f"Video availability check not implemented for {platform.value}"
         )
 
 class UnsupportedPredictorVersionError(DomainError):

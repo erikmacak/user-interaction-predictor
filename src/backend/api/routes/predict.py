@@ -7,7 +7,7 @@ from schemas.predict import (
 )
 from domain.video import VideoSource
 from services.predictor.registry import PredictorRegistry
-from settings import PREDICTOR_VERSION
+from core.settings import settings
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ def predict_actions(payload: PredictActionsRequest) -> PredictActionsResponse:
             platform=payload.platform,
             video_id=payload.video_id,
         )
-        predictor = PredictorRegistry.get(PREDICTOR_VERSION)
+        predictor = PredictorRegistry.get(settings.PREDICTOR_VERSION)
         predicted_actions = predictor.predict(video_source)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))

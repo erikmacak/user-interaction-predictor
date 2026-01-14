@@ -9,7 +9,8 @@ class PredictActionsRequest(BaseModel):
     video_id: str
 
     model_config = ConfigDict(
-        extra="forbid"
+        extra="forbid",
+        frozen=True
     )
 
 class PredictedAction(BaseModel):
