@@ -20,3 +20,17 @@ def test_predict_endpoint_happy_path():
     assert "predicted_actions" in payload
     assert isinstance(payload["predicted_actions"], list)
     assert len(payload["predicted_actions"]) > 0
+
+def test_invalid_platform():
+    response = client.post(
+        "/api/predict_actions",
+        json={"platform": "Facebook", "video_id": "123"},
+    )
+    assert response.status_code == 400
+
+def test_nonexistent_video():
+    response = client.post(
+        "/api/predict_actions",
+        json={"platform": "YouTube", "video_id": "this_does_not_exist"},
+    )
+    assert response.status_code == 404

@@ -15,7 +15,10 @@ class PredictorV1(BasePredictor):
     GROUP_PROBABILITIES = {
         "engagement": 0.65,
         "consumption": 0.35,
-        "skip": 1.0, 
+    }
+
+    MANDATORY_ACTIONS = {
+        PredictedActionType.SKIP,
     }
 
     ACTION_PROBABILITIES = {
@@ -28,19 +31,17 @@ class PredictorV1(BasePredictor):
             PredictedActionType.FINISH_WATCHING: 0.55,
             PredictedActionType.REWATCH: 0.20,
         },
-        "skip": {
-            PredictedActionType.SKIP: 1.0,
-        },
     }
-
+    
     def _predict_from_data(self, data) -> List[PredictedActionType]:
         actions: List[PredictedActionType] = []
 
         for group, probability in self.GROUP_PROBABILITIES.items():
             if random.random() > probability:
                 continue
-
             actions.extend(self._select_actions_from_group(group))
+
+        actions.extend(self.MANDATORY_ACTIONS)
 
         actions = self._enforce_action_dependencies(actions)
         actions = self._order_actions(actions)

@@ -4,7 +4,7 @@ The **User Interaction Predictor** is a core component designed to facilitate st
 
 This project is developed as part of the [KInIT AI-Auditology](https://kinit.sk/project/ai-auditology-social-media-ai-algorithms-auditing/) initiative, focusing on auditing social media AI algorithms.
 
-> **Note:** Note: Version 0.1.0 is intended for testing purposes. Current interaction generation uses stochastic modeling (mocked behavior) to simulate human-like sequences.
+> **Note:** Version 0.1.0 is intended for testing purposes. Current interaction generation uses stochastic modeling (mocked behavior) to simulate human-like sequences.
 
 ## Architecture & Integration
 To utilize the predictor effectively, users should be familiar with **sockpuppeting auditing** techniques. The system requires a frontend agent to execute the actions returned in the HTTP response.
@@ -26,7 +26,7 @@ To utilize the predictor effectively, users should be familiar with **sockpuppet
 ### Local Installation & Execution
 1. **Clone the repository:**
     ```bash
-   git clone <https://github.com/erikmacak/user-interaction-predictor.git>
+   git clone https://github.com/erikmacak/user-interaction-predictor.git
 2. **Navigate to the backend directory:**
     ```bash
     cd src/backend
@@ -68,7 +68,7 @@ Allowed values for `platform`: "YouTube", "TikTok", "Instagram".
 }
 ```
 
-Possible actions: **LIKE, FOLLOW, SKIP, FINISH_WATCHING, REWATCH**. The **SKIP** action is always included to ensure sequence termination.
+Possible actions: **LIKE, FOLLOW, SAVE, SKIP, FINISH_WATCHING, REWATCH**. The **SKIP** action is always included to ensure sequence termination.
 
 ## Configuration & Known Issues
 

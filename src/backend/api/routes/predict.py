@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter
 
 from schemas.predict import (
     PredictActionsRequest,
@@ -16,15 +16,12 @@ router = APIRouter()
     response_model=PredictActionsResponse,
 )
 def predict_actions(payload: PredictActionsRequest) -> PredictActionsResponse:
-    try:
-        video_source = VideoSource(
-            platform=payload.platform,
-            video_id=payload.video_id,
-        )
-        predictor = PredictorRegistry.get(settings.PREDICTOR_VERSION)
-        predicted_actions = predictor.predict(video_source)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
+    video_source = VideoSource(
+        platform=payload.platform,
+        video_id=payload.video_id,
+    )
+    predictor = PredictorRegistry.get(settings.PREDICTOR_VERSION)
+    predicted_actions = predictor.predict(video_source)
 
     return PredictActionsResponse(
         predicted_actions=[
