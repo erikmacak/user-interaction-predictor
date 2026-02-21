@@ -1,17 +1,94 @@
-# Python
+# ============================================
+# PYTHON / BACKEND
+# ============================================
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
 
 # Virtual environment
 .venv/
+venv/
+ENV/
+env/
 
 # Environment variables
 .env
+.env.local
+.env.production
 
 # pytest
 .pytest_cache/
+.coverage
+htmlcov/
 
 # Python package metadata
 *.egg-info/
+dist/
+build/
 
-# Other
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# ============================================
+# NEXT.JS / FRONTEND
+# ============================================
+# dependencies
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+coverage/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# ============================================
+# GENERAL
+# ============================================
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
