@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, status
 
 from schemas.predict import (
     PredictActionsRequest,
@@ -14,6 +14,7 @@ router = APIRouter()
 @router.post(
     "/predict_actions",
     response_model=PredictActionsResponse,
+    status_code=status.HTTP_200_OK,
 )
 def predict_actions(payload: PredictActionsRequest) -> PredictActionsResponse:
     video_source = VideoSource(

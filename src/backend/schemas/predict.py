@@ -1,16 +1,16 @@
 from typing import List
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from domain.video import VideoPlatform
 from domain.action import PredictedActionType
 
 class PredictActionsRequest(BaseModel):
-    platform: VideoPlatform
-    video_id: str
+    platform: VideoPlatform = Field(..., description="Social media platform")
+    video_id: str = Field(..., min_length=1, description="Platform-specific video identifier")
 
     model_config = ConfigDict(
         extra="forbid",
-        frozen=True
+        frozen=True,
     )
 
 class PredictedAction(BaseModel):
