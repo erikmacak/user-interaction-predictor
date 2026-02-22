@@ -34,3 +34,19 @@ class UnsupportedPredictorVersionError(DomainError):
             f"Unsupported predictor version '{version}'. "
             f"Supported versions: {', '.join(supported_versions)}"
         )
+
+class AuthenticationError(DomainError):
+    """Base class for authentication-related errors."""
+
+class AlreadyAuthenticatedError(AuthenticationError):
+    def __init__(self):
+        super().__init__(
+            "User is already authenticated. Please logout first to login again."
+        )
+
+class PasswordAlreadyChangedError(AuthenticationError):
+    def __init__(self):
+        super().__init__(
+            "Initial password has already been changed. "
+            "Password cannot be changed again through this endpoint."
+        )
