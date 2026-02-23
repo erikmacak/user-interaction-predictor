@@ -9,8 +9,8 @@ class LoginResponse(BaseModel):
     must_change_password: bool
 
 class ChangePasswordRequest(BaseModel):
-    new_password: str = Field(..., min_length=settings.MIN_PASSWORD_LENGTH)
-    confirm_password: str = Field(..., min_length=settings.MIN_PASSWORD_LENGTH)
+    new_password: str = Field(..., min_length=12)
+    confirm_password: str = Field(..., min_length=12)
 
 class ChangePasswordResponse(BaseModel):
     message: str

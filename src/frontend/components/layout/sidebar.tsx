@@ -5,10 +5,17 @@ import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { NAVIGATION_ITEMS, APP_SHORT_NAME } from '@/constants';
 import { cn } from '@/lib/utils/cn';
+import { useAuth } from '@/lib/contexts/auth-context';
 
 export function Sidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const { logout } = useAuth();
+
+  const handleLogout = async () => {
+    setIsOpen(false);
+    await logout();
+  };
 
   const NavLinks = () => (
     <nav className="space-y-1">
@@ -31,9 +38,7 @@ export function Sidebar() {
         );
       })}
       <button
-        onClick={() => {
-          setIsOpen(false);
-        }}
+        onClick={handleLogout}
         className="block w-full rounded-md px-3 py-2 text-left text-sm font-medium text-slate-300 transition-colors hover:bg-slate-800 hover:text-white"
       >
         Logout

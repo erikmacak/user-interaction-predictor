@@ -14,8 +14,8 @@ class PasswordPolicy:
     def validate(password: str) -> tuple[bool, str]:
         errors = []
         
-        if len(password) < settings.MIN_PASSWORD_LENGTH:
-            errors.append(f"Password must be at least {settings.MIN_PASSWORD_LENGTH} characters long")
+        if len(password) < 12:
+            errors.append(f"Password must be at least 12 characters long")
         
         if settings.REQUIRE_UPPERCASE and not re.search(r"[A-Z]", password):
             errors.append("Password must contain at least one uppercase letter")

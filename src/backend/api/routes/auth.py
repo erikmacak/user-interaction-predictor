@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Response, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-
+from core.settings import settings
 from core.database import get_db
 from api.deps import (
     get_current_user,
@@ -42,7 +42,7 @@ async def login(
         httponly=True,
         secure=False,
         samesite="lax",
-        max_age=60 * 60,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     
     return LoginResponse(
@@ -85,7 +85,7 @@ async def change_password(
         httponly=True,
         secure=False,
         samesite="lax",
-        max_age=60 * 60,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
     )
     
     return ChangePasswordResponse(
@@ -98,8 +98,27 @@ async def change_password(
 )
 async def logout(
     response: Response,
-    current_user: User = Depends(get_current_user_if_password_changed),
+    #current_user: User = Depends(get_current_user_if_password_changed),
 ):
     response.delete_cookie(key="access_token")
     
     return {"message": "Logged out successfully"}
+
+@router.get(
+    "/verify",
+    status_code=status.HTTP_200_OK,
+)
+async def verify_auth(
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.must_change_password:
+        from fastapi import HTTPException
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Password change required"
+        )
+    
+    return {
+        "authenticated": True,
+        "must_change_password": False
+    }

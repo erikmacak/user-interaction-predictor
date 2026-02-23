@@ -12,7 +12,7 @@ class AppSettings(BaseSettings):
     
     SECRET_KEY: str
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     
     INITIAL_ADMIN_PASSWORD: str
     
@@ -21,7 +21,6 @@ class AppSettings(BaseSettings):
     PREDICTOR_VERSION: str = "v1"
     allow_instagram_without_availability_check: bool = False
     
-    MIN_PASSWORD_LENGTH: int = 12
     REQUIRE_UPPERCASE: bool = True
     REQUIRE_LOWERCASE: bool = True
     REQUIRE_DIGIT: bool = True

@@ -1,23 +1,65 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
+import { authApi } from '@/lib/api/auth';
+import { ApiError } from '@/lib/api/client';
+import { useAuth } from '@/lib/contexts/auth-context';
+import { changePasswordSchema } from '@/lib/validation/password';
+import { z } from 'zod';
 
 export default function ChangePasswordPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [error, setError] = useState('');
-  
+  const [errors, setErrors] = useState<{ newPassword?: string; confirmPassword?: string }>({});
+  const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
+  const { refreshAuthStatus } = useAuth();
+
   const isFormValid = newPassword.length > 0 && confirmPassword.length > 0;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrors({});
 
-    if (newPassword !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
+    try {
+      changePasswordSchema.parse({ newPassword, confirmPassword });
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        const fieldErrors: { newPassword?: string; confirmPassword?: string } = {};
+        err.issues.forEach((issue) => {
+          const field = issue.path[0] as 'newPassword' | 'confirmPassword';
+          if (!fieldErrors[field]) {
+            fieldErrors[field] = issue.message;
+          }
+        });
+        setErrors(fieldErrors);
+        return;
+      }
+    }
+
+    setIsLoading(true);
+
+    try {
+      await authApi.changePassword(newPassword, confirmPassword);
+      await refreshAuthStatus();
+      await new Promise(resolve => setTimeout(resolve, 500));
+      router.push('/dashboard');
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.message.toLowerCase().includes('weak') || err.message.toLowerCase().includes('requirement')) {
+          setErrors({ newPassword: err.message });
+        } else {
+          setErrors({ confirmPassword: err.message || 'An error occurred. Please try again.' });
+        }
+      } else {
+        setErrors({ confirmPassword: 'Network error. Please try again.' });
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -36,12 +78,14 @@ export default function ChangePasswordPage() {
           <Input
             type="password"
             label="New password"
-            placeholder="Enter new password"
+            placeholder="Enter new password (min. 12 characters)"
             value={newPassword}
             onChange={(e) => {
               setNewPassword(e.target.value);
-              setError('');
+              setErrors((prev) => ({ ...prev, newPassword: undefined }));
             }}
+            error={errors.newPassword}
+            disabled={isLoading}
           />
 
           <Input
@@ -51,15 +95,17 @@ export default function ChangePasswordPage() {
             value={confirmPassword}
             onChange={(e) => {
               setConfirmPassword(e.target.value);
-              setError('');
+              setErrors((prev) => ({ ...prev, confirmPassword: undefined }));
             }}
-            error={error}
+            error={errors.confirmPassword}
+            disabled={isLoading}
           />
 
           <Button
             type="submit"
             className="w-full"
-            disabled={!isFormValid}
+            isLoading={isLoading}
+            disabled={!isFormValid || isLoading}
           >
             Change Password
           </Button>
