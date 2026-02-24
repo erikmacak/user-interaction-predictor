@@ -1,14 +1,52 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { MOCK_AGENTS } from '@/lib/mock-data';
 import { Card } from '@/components/ui/card';
 import { EmptyState } from '@/components/layout/empty-state';
 import { Button } from '@/components/ui/button';
 import { formatDuration } from '@/lib/utils/format';
+import { agentsApi, AgentResponse } from '@/lib/api/agents';
 
 export default function DashboardPage() {
-  const auditingAgents = MOCK_AGENTS.filter((a) => a.state === 'auditing');
+  const [auditingAgents, setAuditingAgents] = useState<AgentResponse[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAgents = async () => {
+      try {
+        const data = await agentsApi.list('auditing');
+        setAuditingAgents(data.agents);
+      } catch (err: any) {
+        setError('Failed to fetch auditing agents')
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchAgents();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <EmptyState
+          title="Loading system overview"
+          description="Please wait while we load system configuration"
+        />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <p className="mt-1 text-sm text-slate-600">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (auditingAgents.length === 0) {
     return (
@@ -44,7 +82,7 @@ export default function DashboardPage() {
               </div>
               <div className="flex items-center justify-between">
                 <p className="text-xs text-slate-500">
-                  Operating for: {formatDuration(754)}
+                  Operating
                 </p>
                 <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
                   Active

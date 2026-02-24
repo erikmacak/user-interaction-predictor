@@ -1,6 +1,4 @@
 from typing import Dict
-
-from core.settings import settings
 from domain.video import VideoPlatform, VideoSource
 from services.video_availability.base import BaseVideoAvailabilityService
 from services.video_availability.tiktok import TikTokAvailabilityService
@@ -14,18 +12,12 @@ class VideoAvailabilityRegistry:
         VideoPlatform.YOUTUBE: YouTubeAvailabilityService(),
         VideoPlatform.INSTAGRAM: InstagramAvailabilityService(),
     }
-
+    
     @classmethod
     def exists(cls, video: VideoSource) -> bool:
-        if (
-            video.platform == VideoPlatform.INSTAGRAM
-            and settings.allow_instagram_without_availability_check
-        ):
-            return True
-
         try:
             service = cls._services[video.platform]
         except KeyError:
             raise VideoAvailabilityNotImplementedError(video.platform)
-
+        
         return service.exists(video)

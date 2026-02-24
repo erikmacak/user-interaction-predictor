@@ -1,8 +1,7 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { MOCK_AGENTS } from '@/lib/mock-data';
 import {
   Card,
   CardHeader,
@@ -13,8 +12,9 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { PLATFORMS, PREDICTOR_VERSIONS } from '@/constants';
+import { PLATFORMS } from '@/constants';
 import { Platform, AgentState } from '@/types';
+import { agentsApi, AgentResponse } from '@/lib/api/agents';
 
 interface PageProps {
   params: Promise<{ agentId: string }>;
@@ -23,16 +23,49 @@ interface PageProps {
 export default function EditAgentPage({ params }: PageProps) {
   const router = useRouter();
   const { agentId } = use(params);
-  const agent = MOCK_AGENTS.find((a) => a.id === agentId);
-
+  
+  const [agent, setAgent] = useState<AgentResponse | null>(null);
+  const [predictorVersions, setPredictorVersions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
   const [formData, setFormData] = useState({
-    name: agent?.name || '',
-    platform: (agent?.platform || 'YouTube') as Platform,
-    predictorVersion: agent?.predictorVersion || 'v1',
-    state: (agent?.state || 'offline') as AgentState,
-    checkVideoExistence: agent?.checkVideoExistence ?? true,
+    name: '',
+    platform: 'YouTube' as Platform,
+    predictorVersion: 'v1',
+    state: 'offline' as AgentState,
+    checkVideoExistence: true,
   });
   const [stateFile, setStateFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setIsLoading(true);
+      try {
+        const [agentData, versions] = await Promise.all([
+          agentsApi.get(agentId),
+          agentsApi.getVersions(),
+        ]);
+        
+        setAgent(agentData);
+        setPredictorVersions(versions);
+        setFormData({
+          name: agentData.name,
+          platform: agentData.platform,
+          predictorVersion: agentData.predictor_version,
+          state: agentData.state,
+          checkVideoExistence: agentData.check_video_existence,
+        });
+      } catch (err: any) {
+        setError(err.message || 'Failed to load agent');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [agentId]);
 
   const isFormValid = formData.name.trim().length > 0;
 
@@ -52,21 +85,53 @@ export default function EditAgentPage({ params }: PageProps) {
     setStateFile(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push('/agents');
+    
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const updateData: any = {
+        name: formData.name,
+        platform: formData.platform,
+        predictor_version: formData.predictorVersion,
+        check_video_existence: formData.checkVideoExistence,
+        state: formData.state,
+      };
+
+      if (stateFile) {
+        const fileContent = await stateFile.text();
+        updateData.state_file_data = fileContent;
+      }
+
+      await agentsApi.update(agentId, updateData);
+      router.push('/agents');
+    } catch (err: any) {
+      setError(err.message || 'Failed to update agent');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  if (!agent) {
+  if (isLoading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <p className="text-sm text-slate-600">Loading agent...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error && !agent) {
+    return (
+      <div className="flex h-full items-center justify-center">
         <div className="text-center">
           <h2 className="text-lg font-medium text-slate-900">
             Agent not found
           </h2>
-          <p className="mt-1 text-sm text-slate-600">
-            The agent you're looking for doesn't exist.
-          </p>
+          <p className="mt-1 text-sm text-slate-600">{error}</p>
           <Button onClick={() => router.push('/agents')} className="mt-4">
             Back to Agents
           </Button>
@@ -84,6 +149,12 @@ export default function EditAgentPage({ params }: PageProps) {
             Update agent configuration and settings
           </CardDescription>
         </CardHeader>
+
+        {error && (
+          <div className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-2 md:space-y-3">
           <Input
@@ -178,7 +249,7 @@ export default function EditAgentPage({ params }: PageProps) {
               setFormData({ ...formData, predictorVersion: e.target.value })
             }
           >
-            {PREDICTOR_VERSIONS.map((version) => (
+            {predictorVersions.map((version) => (
               <option key={version} value={version}>
                 {version}
               </option>
@@ -195,7 +266,6 @@ export default function EditAgentPage({ params }: PageProps) {
               })
             }
           >
-            <option value="auditing">Auditing</option>
             <option value="offline">Offline</option>
             <option value="banned">Banned</option>
           </Select>
@@ -217,11 +287,16 @@ export default function EditAgentPage({ params }: PageProps) {
               variant="secondary"
               onClick={() => router.back()}
               className="flex-1"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={!isFormValid}>
-              Save Changes
+            <Button 
+              type="submit" 
+              className="flex-1" 
+              disabled={!isFormValid || isSubmitting}
+            >
+              {isSubmitting ? 'Saving...' : 'Save Changes'}
             </Button>
           </div>
         </form>

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -12,11 +12,15 @@ import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { PLATFORMS, PREDICTOR_VERSIONS } from '@/constants';
+import { PLATFORMS } from '@/constants';
 import { Platform } from '@/types';
+import { agentsApi } from '@/lib/api/agents';
+import { EmptyState } from '@/components/layout/empty-state';
 
 export default function NewAgentPage() {
   const router = useRouter();
+  const [predictorVersions, setPredictorVersions] = useState<string[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     platform: 'YouTube' as Platform,
@@ -24,6 +28,24 @@ export default function NewAgentPage() {
     checkVideoExistence: true,
   });
   const [stateFile, setStateFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchVersions = async () => {
+      setIsLoading(true);
+      try {
+        const versions = await agentsApi.getVersions();
+        setPredictorVersions(versions);
+        if (versions.length > 0) {
+          setFormData(prev => ({ ...prev }));
+        }
+      } catch (err: any) {
+        setError('Failed to fetch agent configuration');
+      }
+    };
+    fetchVersions();
+  }, []);
 
   const isFormValid = formData.name.trim().length > 0 && stateFile !== null;
 
@@ -32,6 +54,7 @@ export default function NewAgentPage() {
     if (file) {
       if (file.type === 'application/json' || file.name.endsWith('.json')) {
         setStateFile(file);
+        setError(null);
       } else {
         alert('Please upload a valid JSON file');
         e.target.value = '';
@@ -43,13 +66,62 @@ export default function NewAgentPage() {
     setStateFile(null);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    router.push('/agents');
+    
+    if (!stateFile) return;
+
+    setIsSubmitting(true);
+    setError(null);
+
+    try {
+      const fileContent = await stateFile.text();
+      
+      await agentsApi.create({
+        name: formData.name,
+        platform: formData.platform,
+        predictor_version: formData.predictorVersion,
+        check_video_existence: formData.checkVideoExistence,
+        state_file_data: fileContent,
+      });
+
+      router.push('/agents');
+    } catch (err: any) {
+      setError('Failed to fetch agent configuration');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
+  if (isLoading) {
+      return (
+        <div className="flex h-full items-center justify-center">
+          <EmptyState
+            title="Loading system overview"
+            description="Please wait while we load system configuration"
+          />
+        </div>
+      );
+    }
+
+  if (error) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-medium text-slate-900">
+            Failed to load create form
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">{error}</p>
+          <Button onClick={() => router.push('/agents')} className="mt-4">
+            Back to Agents
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="mx-auto w-full max-w-xl px-4 md:max-w-3xl md:px-0"> {/*HERE*/}
+    <div className="mx-auto w-full max-w-xl px-4 md:max-w-3xl md:px-0">
       <Card className="p-4">
         <CardHeader className="mb-3 p-0">
           <CardTitle className="text-base md:text-lg">Add New Agent</CardTitle>
@@ -152,7 +224,7 @@ export default function NewAgentPage() {
               setFormData({ ...formData, predictorVersion: e.target.value })
             }
           >
-            {PREDICTOR_VERSIONS.map((version) => (
+            {predictorVersions.map((version) => (
               <option key={version} value={version}>
                 {version}
               </option>
@@ -176,11 +248,16 @@ export default function NewAgentPage() {
               variant="secondary"
               onClick={() => router.back()}
               className="flex-1"
+              disabled={isSubmitting}
             >
               Cancel
             </Button>
-            <Button type="submit" className="flex-1" disabled={!isFormValid}>
-              Create Agent
+            <Button 
+              type="submit" 
+              className="flex-1" 
+              disabled={!isFormValid || isSubmitting}
+            >
+              {isSubmitting ? 'Creating...' : 'Create Agent'}
             </Button>
           </div>
         </form>

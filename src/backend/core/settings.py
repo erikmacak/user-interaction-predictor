@@ -19,7 +19,6 @@ class AppSettings(BaseSettings):
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
     
     PREDICTOR_VERSION: str = "v1"
-    allow_instagram_without_availability_check: bool = False
     
     REQUIRE_UPPERCASE: bool = True
     REQUIRE_LOWERCASE: bool = True

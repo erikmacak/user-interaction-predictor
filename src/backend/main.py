@@ -11,6 +11,7 @@ from core.settings import settings
 from services.predictor.registry import PredictorRegistry
 from api.routes.predict import router as predict_router
 from api.routes.auth import router as auth_router
+from api.routes.agents import router as agents_router
 from api.exception_handlers import (
     validation_exception_handler,
     domain_exception_handler,
@@ -96,6 +97,12 @@ app.add_exception_handler(
 auth_router_with_limits = auth_router
 auth_router_with_limits.routes[0].endpoint = limiter.limit("5/minute")(
     auth_router_with_limits.routes[0].endpoint
+)
+
+app.include_router(
+    agents_router,
+    prefix="/api",
+    tags=["agents"],
 )
 
 app.include_router(

@@ -50,3 +50,20 @@ class PasswordAlreadyChangedError(AuthenticationError):
             "Initial password has already been changed. "
             "Password cannot be changed again through this endpoint."
         )
+
+class AgentError(DomainError):
+    """Base class for agent-related errors."""
+
+class AgentAlreadyExistsError(AgentError):
+    def __init__(self, name: str):
+        self.name = name
+        super().__init__(
+            f"Agent with name '{name}' already exists"
+        )
+
+class AgentNotFoundError(AgentError):
+    def __init__(self, agent_id: str):
+        self.agent_id = agent_id
+        super().__init__(
+            f"Agent with ID '{agent_id}' not found"
+        )
