@@ -7,7 +7,7 @@ import json
 from services.predictor.registry import PredictorRegistry
 
 Platform = Literal["YouTube", "TikTok", "Instagram"]
-AgentState = Literal["offline", "banned"]
+AgentState = Literal["auditing", "offline", "banned"]
 
 class AgentCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
@@ -15,7 +15,7 @@ class AgentCreateRequest(BaseModel):
     predictor_version: str = Field(..., min_length=1, max_length=50)
     check_video_existence: bool = True
     state_file_data: str
-
+    
     @field_validator('predictor_version')
     @classmethod
     def validate_predictor_version(cls, v: str) -> str:
@@ -46,9 +46,9 @@ class AgentUpdateRequest(BaseModel):
     platform: Platform | None = None
     predictor_version: str | None = Field(None, min_length=1, max_length=50)
     check_video_existence: bool | None = None
-    state: AgentState | None = None
+    state: Literal["offline", "banned"] | None = None
     state_file_data: str | None = None
-
+    
     @field_validator('predictor_version')
     @classmethod
     def validate_predictor_version(cls, v: str | None) -> str | None:
@@ -88,7 +88,7 @@ class AgentResponse(BaseModel):
     updated_at: datetime
     
     @field_serializer('id')
-    def serialize_id(self, value: UUID) -> str:
+    def serialize_id(self, value: UUID, _info) -> str:
         return str(value)
     
     model_config = {"from_attributes": True}

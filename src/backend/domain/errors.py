@@ -67,3 +67,38 @@ class AgentNotFoundError(AgentError):
         super().__init__(
             f"Agent with ID '{agent_id}' not found"
         )
+
+class SessionError(DomainError):
+    """Base class for session-related errors."""
+
+class AgentAlreadyAuditingError(SessionError):
+    def __init__(self, agent_name: str):
+        self.agent_name = agent_name
+        super().__init__(
+            f"Agent '{agent_name}' is already auditing",
+            "AGENT_ALREADY_AUDITING"
+        )
+
+class AgentNotAuditingError(SessionError):
+    def __init__(self, agent_name: str):
+        self.agent_name = agent_name
+        super().__init__(
+            f"Agent '{agent_name}' is not currently auditing",
+            "AGENT_NOT_AUDITING"
+        )
+
+class SessionNotFoundError(SessionError):
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        super().__init__(
+            f"Session with ID '{session_id}' not found",
+            "SESSION_NOT_FOUND"
+        )
+
+class SessionAlreadyCompletedError(SessionError):
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        super().__init__(
+            f"Session '{session_id}' is already completed",
+            "SESSION_ALREADY_COMPLETED"
+        )

@@ -7,54 +7,118 @@ import {
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
+import { EmptyState } from '@/components/layout/empty-state';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { agentsApi, AgentResponse } from '@/lib/api/agents';
-import { EmptyState } from '@/components/layout/empty-state';
+import { 
+  auditSessionsApi, 
+  AuditSessionResponse 
+} from '@/lib/api/audit_sessions';
+import { format } from 'date-fns';
 
 export default function SessionsPage() {
   const [agents, setAgents] = useState<AgentResponse[]>([]);
+  const [runningSessions, setRunningSessions] = useState<AuditSessionResponse[]>([]);
   const [selectedAgent, setSelectedAgent] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingAgents, setIsLoadingAgents] = useState(true);
+  const [isLoadingSessions, setIsLoadingSessions] = useState(true);
+  const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
+
+  const fetchAgents = async () => {
+    setIsLoadingAgents(true);
+    try {
+      const data = await agentsApi.list('offline');
+      setAgents(data.agents);
+    } catch (err: any) {
+      setError('Failed to fetch offline agents');
+    } finally {
+      setIsLoadingAgents(false);
+    }
+  };
+
+  const fetchRunningSessions = async () => {
+    setIsLoadingSessions(true);
+    try {
+      const data = await auditSessionsApi.listRunning();
+      setRunningSessions(data.sessions);
+    } catch (err: any) {
+      setError('Failed to fetch running sessions');
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchAgents = async () => {
-      try {
-        const data = await agentsApi.list('offline');
-        setAgents(data.agents);
-      } catch (err: any) {
-        setError('Failed to fetch available agents')
-      } finally {
-        setIsLoading(false);
-      }
-    };
     fetchAgents();
+    fetchRunningSessions();
+    setIsLoading(false);
   }, []);
 
   const isFormValid = selectedAgent.length > 0;
 
-  const handleStartSession = (e: React.FormEvent) => {
+  const handleStartSession = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!selectedAgent) return;
+
+    setIsStarting(true);
+    setError(null);
+
+    try {
+      await auditSessionsApi.start({ agent_id: selectedAgent });
+      
+      await Promise.all([fetchAgents(), fetchRunningSessions()]);
+      
+      setSelectedAgent('');
+    } catch (err: any) {
+      setError(err.message || 'Failed to start session');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
-  const handleEndSession = (sessionId: string, agentName: string) => {
-    
+  const handleEndSession = async (sessionId: string) => {
+    try {
+      await auditSessionsApi.stop(sessionId);
+      
+      await Promise.all([fetchAgents(), fetchRunningSessions()]);
+    } catch (err: any) {
+      setError(err.message || 'Failed to stop session');
+    }
+  };
+
+  const handleCopySessionId = async (sessionId: string) => {
+    try {
+      await navigator.clipboard.writeText(sessionId);
+      setCopiedSessionId(sessionId);
+      setTimeout(() => setCopiedSessionId(null), 2000);
+    } catch (err) {
+      setError('Failed to copy session ID');
+    }
+  };
+
+  const formatStartTime = (dateString: string) => {
+    const date = new Date(dateString);
+    date.setHours(date.getHours() + 1);
+    return format(date, 'HH:mm');
   };
 
   if (isLoading) {
-      return (
-        <div className="flex h-full items-center justify-center">
-          <EmptyState
-            title="Loading system overview"
-            description="Please wait while we load system configuration"
-          />
-        </div>
-      );
-    }
+    return (
+      <div className="flex h-full items-center justify-center">
+        <EmptyState
+          title="Loading system overview"
+          description="Please wait while we load system configuration"
+        />
+      </div>
+    );
+  }
 
-  if (error) {
+  if (error && agents.length === 0 && runningSessions.length === 0) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
@@ -69,25 +133,24 @@ export default function SessionsPage() {
       <div className="mb-6">
         <h1 className="text-2xl font-semibold">Sessions</h1>
         <p className="mt-1 text-sm text-slate-600">
-          Manage audit sessions and verification keys
+          Manage audit sessions and monitoring
+        </p>
+        <p className="mt-4 text-sm text-slate-600">
+          Once the session starts, copy the Session ID and assign it to the agent
         </p>
       </div>
 
-      <div className="mb-6 space-y-2">
-        <p className="text-sm text-slate-600">
-          • Once a session is started, a verification key is generated and must
-          be included in the agent's HTTP request.
-        </p>
-        <p className="text-sm text-slate-600">
-          • Sessions can be stopped at any time to revoke access.
-        </p>
-      </div>
+      {error && (
+        <div className="mb-6 rounded-md bg-red-50 p-4 text-sm text-red-700">
+          {error}
+        </div>
+      )}
 
       <Card className="mb-6">
         <CardHeader>
           <CardTitle className="text-base">Start New Session</CardTitle>
           <CardDescription className="text-xs">
-            Select an agent to begin an audit session
+            Select an offline agent to begin an audit session
           </CardDescription>
         </CardHeader>
 
@@ -96,10 +159,14 @@ export default function SessionsPage() {
             label="Select Agent"
             value={selectedAgent}
             onChange={(e) => setSelectedAgent(e.target.value)}
-            disabled={isLoading}
+            disabled={isLoadingAgents || isStarting}
           >
             <option value="" disabled>
-              {isLoading ? 'Loading agents...' : 'Choose an agent...'}
+              {isLoadingAgents 
+                ? 'Loading agents...' 
+                : agents.length === 0 
+                ? 'No offline agents available'
+                : 'Choose an agent...'}
             </option>
             {agents.map((agent) => (
               <option key={agent.id} value={agent.id}>
@@ -108,8 +175,12 @@ export default function SessionsPage() {
             ))}
           </Select>
 
-          <Button type="submit" className="w-full" disabled={!isFormValid || isLoading}>
-            Start Session
+          <Button 
+            type="submit" 
+            className="w-full" 
+            disabled={!isFormValid || isStarting || isLoadingAgents}
+          >
+            {isStarting ? 'Starting...' : 'Start Session'}
           </Button>
         </form>
       </Card>
@@ -125,21 +196,110 @@ export default function SessionsPage() {
         <CardHeader>
           <CardTitle className="text-base">Running Sessions</CardTitle>
           <CardDescription className="text-xs">
-            No active sessions
+            {isLoadingSessions
+              ? 'Loading sessions...'
+              : runningSessions.length === 0
+              ? 'No active sessions'
+              : `${runningSessions.length} active session(s)`}
           </CardDescription>
         </CardHeader>
 
         <div className="border-t border-slate-200">
-          <div className="flex items-center justify-center p-8 text-center">
-            <div>
-              <p className="text-sm font-medium text-slate-900">
-                No active sessions
-              </p>
-              <p className="mt-1 text-xs text-slate-600">
-                Start a session to begin auditing
-              </p>
+          {isLoadingSessions ? (
+            <div className="flex items-center justify-center p-8 text-center">
+              <div>
+                <p className="text-sm font-medium text-slate-900">
+                  Loading sessions...
+                </p>
+              </div>
             </div>
-          </div>
+          ) : runningSessions.length === 0 ? (
+            <div className="flex items-center justify-center p-8 text-center">
+              <div>
+                <p className="text-sm font-medium text-slate-900">
+                  No active sessions
+                </p>
+                <p className="mt-1 text-xs text-slate-600">
+                  Start a session to begin auditing
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-200">
+              {runningSessions.map((session) => (
+                <div
+                  key={session.id}
+                  className="p-4 transition-colors hover:bg-slate-50"
+                >
+                  {/* Desktop layout */}
+                  <div className="hidden items-center justify-between md:flex">
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-900">
+                        {session.agent_name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-600">
+                        {session.agent_platform} • Started at {formatStartTime(session.started_at)}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                          Running
+                        </span>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => handleCopySessionId(session.id)}
+                          className="h-6 px-2 text-xs"
+                        >
+                          {copiedSessionId === session.id ? 'Copied!' : 'Copy Session ID'}
+                        </Button>
+                      </div>
+                    </div>
+                    <Button
+                      variant="danger"
+                      onClick={() => handleEndSession(session.id)}
+                      className="ml-4"
+                    >
+                      Stop Session
+                    </Button>
+                  </div>
+
+                  {/* Mobile layout */}
+                  <div className="md:hidden">
+                    <div className="mb-3">
+                      <p className="font-medium text-slate-900">
+                        {session.agent_name}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-600">
+                        {session.agent_platform} • Started at {formatStartTime(session.started_at)}
+                      </p>
+                      <div className="mt-2">
+                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                          Running
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => handleCopySessionId(session.id)}
+                        className="flex-1 text-xs"
+                      >
+                        {copiedSessionId === session.id ? 'Copied!' : 'Copy Session ID'}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleEndSession(session.id)}
+                        className="flex-1 text-xs"
+                      >
+                        Stop
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </Card>
     </div>
