@@ -2,11 +2,13 @@ from typing import Dict
 
 from services.predictor.base import BasePredictor
 from services.predictor.v1 import PredictorV1
+from services.predictor.v2 import PredictorV2
 from domain.errors import UnsupportedPredictorVersionError
 
 class PredictorRegistry:
     _predictors: Dict[str, BasePredictor] = {
         "v1": PredictorV1(),
+        "v2": PredictorV2(),
     }
 
     @classmethod

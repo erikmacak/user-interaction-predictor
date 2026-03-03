@@ -24,7 +24,7 @@ class PredictorV1(BasePredictor):
     ACTION_PROBABILITIES = {
         "engagement": {
             PredictedActionType.LIKE: 0.45,
-            PredictedActionType.FOLLOW: 0.15,
+            #PredictedActionType.FOLLOW: 0.15,
             PredictedActionType.SAVE: 0.20,
         },
         "consumption": {

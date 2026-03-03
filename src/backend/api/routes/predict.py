@@ -1,13 +1,16 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, status, Depends
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
+from core.database import get_db
+from domain.models.audit_session import AuditSession
 from schemas.predict import (
     PredictActionsRequest,
     PredictActionsResponse,
-    PredictedAction,
 )
-from domain.video import VideoSource
+from domain.video import VideoSource, VideoPlatform
 from services.predictor.registry import PredictorRegistry
-from core.settings import settings
+from services.agent_service import AgentService
 
 router = APIRouter()
 
@@ -16,16 +19,41 @@ router = APIRouter()
     response_model=PredictActionsResponse,
     status_code=status.HTTP_200_OK,
 )
-def predict_actions(payload: PredictActionsRequest) -> PredictActionsResponse:
-    video_source = VideoSource(
-        platform=payload.platform,
-        video_id=payload.video_id,
+async def predict_actions(
+    payload: PredictActionsRequest,
+    db: AsyncSession = Depends(get_db),
+) -> PredictActionsResponse:
+    
+    result = await db.execute(
+        select(AuditSession).where(AuditSession.id == payload.session_id)
     )
-    predictor = PredictorRegistry.get(settings.PREDICTOR_VERSION)
-    predicted_actions = predictor.predict(video_source)
+    session = result.scalar_one_or_none()
+    
+    if not session:
+        raise ValueError(f"Session {payload.session_id} not found")
+
+    agent = await AgentService.get_agent(db, session.agent_id)
+    
+    video_source = VideoSource(
+        platform=VideoPlatform(agent.platform),
+        video_id=payload.video_metadata.video_id,
+    )
+
+    predictor = PredictorRegistry.get(agent.predictor_version)
+    
+    if agent.predictor_version == "v2":
+        predicted_actions = await predictor.predict_with_context(
+            video_source=video_source,
+            video_metadata=payload.video_metadata,
+            user_state_json=agent.state_file_data,
+            check_video_existence=agent.check_video_existence
+        )
+    else:
+        predicted_actions = predictor.predict(
+            video_source,
+            check_video_existence=agent.check_video_existence
+        )
 
     return PredictActionsResponse(
-        predicted_actions=[
-            PredictedAction(action=action) for action in predicted_actions
-        ]
+        predicted_actions=predicted_actions
     )

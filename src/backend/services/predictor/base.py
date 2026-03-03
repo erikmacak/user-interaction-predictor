@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, List
-from domain.video import VideoSource, VideoPlatform
+from domain.video import VideoSource
 from domain.action import PredictedActionType
 from services.video_availability.registry import VideoAvailabilityRegistry
 from domain.errors import VideoNotFoundError
