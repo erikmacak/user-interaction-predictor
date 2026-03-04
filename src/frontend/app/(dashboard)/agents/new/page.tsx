@@ -42,7 +42,9 @@ export default function NewAgentPage() {
         }
       } catch (err: any) {
         setError('Failed to fetch agent configuration');
-      }
+      } finally {
+        setIsLoading(false);
+    }
     };
     fetchVersions();
   }, []);

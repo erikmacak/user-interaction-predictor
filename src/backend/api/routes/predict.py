@@ -23,7 +23,6 @@ async def predict_actions(
     payload: PredictActionsRequest,
     db: AsyncSession = Depends(get_db),
 ) -> PredictActionsResponse:
-    
     result = await db.execute(
         select(AuditSession).where(AuditSession.id == payload.session_id)
     )
@@ -31,14 +30,14 @@ async def predict_actions(
     
     if not session:
         raise ValueError(f"Session {payload.session_id} not found")
-
+    
     agent = await AgentService.get_agent(db, session.agent_id)
     
     video_source = VideoSource(
         platform=VideoPlatform(agent.platform),
         video_id=payload.video_metadata.video_id,
     )
-
+    
     predictor = PredictorRegistry.get(agent.predictor_version)
     
     if agent.predictor_version == "v2":
@@ -46,7 +45,10 @@ async def predict_actions(
             video_source=video_source,
             video_metadata=payload.video_metadata,
             user_state_json=agent.state_file_data,
-            check_video_existence=agent.check_video_existence
+            check_video_existence=agent.check_video_existence,
+            db=db,
+            session_id=payload.session_id,
+            agent_id=session.agent_id,
         )
     else:
         predicted_actions = predictor.predict(

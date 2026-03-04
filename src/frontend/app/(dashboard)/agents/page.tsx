@@ -118,55 +118,55 @@ export default function AgentsPage() {
           </Link>
         </div>
 
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {agents.map((agent) => (
-              <Card key={agent.id}>
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle>{agent.name}</CardTitle>
-                      <CardDescription className="mt-1">
-                        {agent.platform} • {agent.predictor_version}
-                      </CardDescription>
-                    </div>
-                    <span
-                      className={cn(
-                        'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium',
-                        STATE_STYLES[agent.state]
-                      )}
-                    >
-                      {agent.state}
-                    </span>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {agents.map((agent) => (
+            <Card key={agent.id}>
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex-1">
+                    <CardTitle>{agent.name}</CardTitle>
+                    <CardDescription className="mt-1">
+                      {agent.platform} • {agent.predictor_version}
+                    </CardDescription>
                   </div>
-                </CardHeader>
-
-                <div className="mt-4 space-y-2">
-                  <div className="flex gap-2">
-                    <Link href={`/agents/${agent.id}/edit`} className="flex-1">
-                      <Button variant="primary" className="w-full">
-                        Edit
-                      </Button>
-                    </Link>
-                    <Button
-                      variant="danger"
-                      className="flex-1"
-                      onClick={() => handleDeleteClick(agent)}
-                    >
-                      Delete
-                    </Button>
-                  </div>
-                  <Link
-                    href={`/agents/${agent.id}/audit-data`}
-                    className="block"
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2 py-1 text-xs font-medium',
+                      STATE_STYLES[agent.state]
+                    )}
                   >
-                    <Button variant="secondary" className="w-full">
-                      Data
+                    {agent.state}
+                  </span>
+                </div>
+              </CardHeader>
+
+              <div className="mt-4 space-y-2">
+                <div className="flex gap-2">
+                  <Link href={`/agents/${agent.id}/edit`} className="flex-1">
+                    <Button variant="primary" className="w-full">
+                      Edit
                     </Button>
                   </Link>
+                  <Button
+                    variant="danger"
+                    className="flex-1"
+                    onClick={() => handleDeleteClick(agent)}
+                  >
+                    Delete
+                  </Button>
                 </div>
-              </Card>
-            ))}
-          </div>
+                <Link
+                  href={`/agents/${agent.id}/audit-data`}
+                  className="block"
+                >
+                  <Button variant="secondary" className="w-full">
+                    Data
+                  </Button>
+                </Link>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
 
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

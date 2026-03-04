@@ -1,7 +1,16 @@
 import os
 import time
 import json
-from typing import List
+import sys
+import warnings
+from typing import List, Optional
+from uuid import UUID
+from sqlalchemy.ext.asyncio import AsyncSession
+
+warnings.filterwarnings("ignore")
+os.environ['PYTHONWARNINGS'] = 'ignore'
+os.environ['FFREPORT'] = 'level=quiet'
+os.environ['AV_LOG_FORCE_NOCOLOR'] = '1'
 
 from domain.video import VideoSource
 from domain.action import PredictedActionType, PredictedAction
@@ -10,6 +19,7 @@ from services.video_processor.video_processor import VideoProcessor
 from services.predictor.initial_analysis import InitialAnalyzer
 from services.predictor.segment_analyzer import SegmentAnalyzer
 from services.decision_tree.decision_engine import DecisionEngine, DecisionContext
+from services.video_log_service import VideoLogService
 from schemas.predict import VideoMetadata
 
 class PredictorV2(BasePredictor):
@@ -24,7 +34,10 @@ class PredictorV2(BasePredictor):
         video_source: VideoSource,
         video_metadata: VideoMetadata,
         user_state_json: str,
-        check_video_existence: bool = True
+        check_video_existence: bool = True,
+        db: Optional[AsyncSession] = None,
+        session_id: Optional[UUID] = None,
+        agent_id: Optional[UUID] = None,
     ) -> List[str]:
         
         print(f"\n{'='*80}")
@@ -32,7 +45,7 @@ class PredictorV2(BasePredictor):
         print(f"{'='*80}")
         
         overall_start = time.time()
-        
+
         user_state = json.loads(user_state_json)
         user_triggers = user_state.get('user_profile', {}).get('retention_triggers', {})
         
@@ -59,15 +72,32 @@ class PredictorV2(BasePredictor):
             )
             
             actions = DecisionEngine.decide(context)
-            return DecisionEngine.convert_actions_to_response(actions)
+            final_actions = DecisionEngine.convert_actions_to_response(actions)
+            
+            if db and session_id and agent_id:
+                await self._log_video(
+                    db, session_id, agent_id, video_source, video_metadata,
+                    final_actions, user_state_json, []
+                )
+            
+            return final_actions
         
         duration = video_metadata.video_time_duration
         
         if duration < 6 or duration > 180:
             print(f"\n⏭️  Duration {duration}s out of range - SKIP\n")
-            return ["skip"]
+            
+            final_actions = ["skip"]
+            
+            if db and session_id and agent_id:
+                await self._log_video(
+                    db, session_id, agent_id, video_source, video_metadata,
+                    final_actions, user_state_json, []
+                )
+            
+            return final_actions
         
-        print(f"📹 Video Duration: {duration}s")
+        print(f"\n📹 Video Duration: {duration}s")
         
         processing_result = self.video_processor.prepare_video_processing(
             video_source=video_source,
@@ -76,12 +106,21 @@ class PredictorV2(BasePredictor):
         )
         
         if processing_result.skipped:
-            return ["skip"]
+            final_actions = ["skip"]
+            
+            if db and session_id and agent_id:
+                await self._log_video(
+                    db, session_id, agent_id, video_source, video_metadata,
+                    final_actions, user_state_json, []
+                )
+            
+            return final_actions
         
-        print(f"\🔬 Analyzing {len(processing_result.segments)} segments\n")
+        print(f"\n🔬 Analyzing {len(processing_result.segments)} segments\n")
         
         all_actions = []
         segment_times = []
+        segment_analyses = []
         
         for idx, (start, end) in enumerate(processing_result.segments, 1):
             print(f"{'─'*80}")
@@ -89,7 +128,7 @@ class PredictorV2(BasePredictor):
             print(f"{'─'*80}\n")
             
             segment_start = time.time()
-
+            
             video_file, _ = self.video_processor.download_segment(
                 url=processing_result.url,
                 start_time=start,
@@ -110,6 +149,7 @@ class PredictorV2(BasePredictor):
                     hashtags=video_metadata.hashtags,
                     user_state_json=user_state_json
                 )
+                segment_analyses.append(segment_analysis)
             except Exception as e:
                 print(f"      ⚠️  Analysis failed: {e}")
                 segment_analysis = None
@@ -149,10 +189,45 @@ class PredictorV2(BasePredictor):
         
         print(f"{'='*80}")
         print(f"✅ Complete in {total_time:.2f}s")
-        print(f"   Final Actions: {[a.to_string() for a in all_actions]}")
+        
+        final_actions = DecisionEngine.convert_actions_to_response(all_actions)
+        
+        print(f"   Final Actions: {final_actions}")
         print(f"{'='*80}\n")
         
-        return DecisionEngine.convert_actions_to_response(all_actions)
+        if db and session_id and agent_id:
+            await self._log_video(
+                db, session_id, agent_id, video_source, video_metadata,
+                final_actions, user_state_json, segment_analyses
+            )
+        
+        return final_actions
+    
+    async def _log_video(
+        self,
+        db: AsyncSession,
+        session_id: UUID,
+        agent_id: UUID,
+        video_source: VideoSource,
+        video_metadata: VideoMetadata,
+        predicted_actions: List[str],
+        user_state_json: str,
+        segment_analyses: List
+    ):
+        try:
+            await VideoLogService.log_video(
+                db=db,
+                session_id=session_id,
+                agent_id=agent_id,
+                video_source=video_source,
+                video_metadata=video_metadata,
+                predicted_actions=predicted_actions,
+                user_state_json=user_state_json,
+                segment_analyses=segment_analyses
+            )
+            print(f"📊 Video logged to database")
+        except Exception as e:
+            print(f"⚠️  Failed to log video: {e}")
     
     def _adjust_continue_watching(
         self,

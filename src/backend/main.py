@@ -13,6 +13,7 @@ from api.routes.predict import router as predict_router
 from api.routes.auth import router as auth_router
 from api.routes.agents import router as agents_router
 from api.routes.audit_sessions import router as sessions_router
+from api.routes import video_logs
 from api.exception_handlers import (
     validation_exception_handler,
     domain_exception_handler,
@@ -99,6 +100,8 @@ auth_router_with_limits = auth_router
 auth_router_with_limits.routes[0].endpoint = limiter.limit("5/minute")(
     auth_router_with_limits.routes[0].endpoint
 )
+
+app.include_router(video_logs.router, prefix="/api", tags=["Video Logs"])
 
 app.include_router(
     sessions_router,
