@@ -50,7 +50,7 @@ class AIAnalyzer:
                 }
             })
         
-        print(f"      🤖 Calling AI (model: gpt-4.1-mini, segment {segment_number}, {len(frames_base64)} frames)...")
+        print(f"       Calling AI (model: gpt-4.1-mini, segment {segment_number}, {len(frames_base64)} frames)...")
         
         try:
             response = self.client.chat.completions.create(
@@ -71,13 +71,13 @@ class AIAnalyzer:
             response_text = response.choices[0].message.content
             
             if not response_text:
-                print(f"      ❌ AI returned empty")
+                print(f"       AI returned empty")
                 return self._get_empty_result(segment_number)
             
             clean_response = self._clean_response(response_text)
             parsed = json.loads(clean_response)
             
-            print(f"      ✅ AI analysis complete")
+            print(f"       AI analysis complete")
             print(f"         USER MATCH:")
             print(f"         - Emotions: {parsed.get('user_match', {}).get('emotions', [])}")
             print(f"         - Language: {parsed.get('user_match', {}).get('language_code', 'None')}")
@@ -92,12 +92,12 @@ class AIAnalyzer:
             return AIAnalysisResult(parsed, segment_number)
             
         except json.JSONDecodeError as e:
-            print(f"      ⚠️  JSON parse error: {e}")
+            print(f"        JSON parse error: {e}")
             print(f"      Decision tree will use available data only")
             return self._get_empty_result(segment_number)
         
         except Exception as e:
-            print(f"      ⚠️  AI call failed: {type(e).__name__}: {e}")
+            print(f"        AI call failed: {type(e).__name__}: {e}")
             print(f"      Decision tree will use available data only")
             return self._get_empty_result(segment_number)
     

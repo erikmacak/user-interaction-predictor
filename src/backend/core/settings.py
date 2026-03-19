@@ -18,8 +18,6 @@ class AppSettings(BaseSettings):
     
     ALLOWED_ORIGINS: List[str] = ["http://localhost:3000"]
     
-    PREDICTOR_VERSION: str = "v1"
-    
     REQUIRE_UPPERCASE: bool = True
     REQUIRE_LOWERCASE: bool = True
     REQUIRE_DIGIT: bool = True

@@ -55,7 +55,7 @@ class DecisionEngine:
         
         score = DecisionEngine._calculate_match_score(context, is_first_segment)
         
-        print(f"      📊 Decision Score: {score:.2f}/1.0")
+        print(f"       Decision Score: {score:.2f}/1.0")
         
         if is_first_segment:
             actions = DecisionEngine._decide_first_segment(score, context)
@@ -80,7 +80,7 @@ class DecisionEngine:
         emotions = user_match.get('emotions')
         if emotions and isinstance(emotions, list):
             emotion_count = len([e for e in emotions if e is not None and e != ""])
-            emotion_score = emotion_count / 2.0  # 0, 0.5, or 1.0
+            emotion_score = emotion_count / 2.0
             score += emotion_score * weights['emotion_match']
         
         language_match = user_match.get('language_code') is not None
@@ -190,7 +190,7 @@ class DecisionEngine:
         actions = []
         score = 0.0
         
-        print(f"      📊 Metadata-Only Decision")
+        print(f"       Metadata-Only Decision")
         
         engagement_score = context.initial_analysis.engagement.weighted_score
         if engagement_score > 100000:

@@ -6,7 +6,7 @@ from uuid import UUID
 
 from domain.models.agent import Agent
 from schemas.agent import AgentCreateRequest, AgentUpdateRequest
-from domain.errors import AgentAlreadyExistsError, AgentNotFoundError
+from domain.errors import AgentAlreadyExistsError, AgentNotFoundError, AgentIsAuditingError
 
 class AgentService:
     
@@ -17,7 +17,6 @@ class AgentService:
             platform=data.platform,
             state="offline",
             predictor_version=data.predictor_version,
-            check_video_existence=data.check_video_existence,
             state_file_data=data.state_file_data,
         )
         
@@ -64,6 +63,9 @@ class AgentService:
         data: AgentUpdateRequest
     ) -> Agent:
         agent = await AgentService.get_agent(db, agent_id)
+
+        if agent.state == "auditing":
+            raise AgentIsAuditingError(agent.name)
         
         update_data = data.model_dump(exclude_unset=True)
         
@@ -81,6 +83,10 @@ class AgentService:
     @staticmethod
     async def delete_agent(db: AsyncSession, agent_id: UUID) -> None:
         agent = await AgentService.get_agent(db, agent_id)
+
+        if agent.state == "auditing":
+            raise AgentIsAuditingError(agent.name)
+
         await db.delete(agent)
         await db.flush()
     

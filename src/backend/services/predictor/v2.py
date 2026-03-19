@@ -12,7 +12,7 @@ os.environ['PYTHONWARNINGS'] = 'ignore'
 os.environ['FFREPORT'] = 'level=quiet'
 os.environ['AV_LOG_FORCE_NOCOLOR'] = '1'
 
-from domain.video import VideoSource
+from domain.video import VideoSource, VideoPlatform
 from domain.action import PredictedActionType, PredictedAction
 from services.predictor.base import BasePredictor
 from services.video_processor.video_processor import VideoProcessor
@@ -23,6 +23,8 @@ from services.video_log_service import VideoLogService
 from schemas.predict import VideoMetadata
 
 class PredictorV2(BasePredictor):
+    
+    NO_SEGMENT_PLATFORMS = {VideoPlatform.TIKTOK}
     
     def __init__(self):
         self.video_processor = VideoProcessor()
@@ -41,7 +43,7 @@ class PredictorV2(BasePredictor):
     ) -> List[str]:
         
         print(f"\n{'='*80}")
-        print(f"🚀 PREDICTOR V2 - Starting Analysis")
+        print(f" PREDICTOR V2 - Starting Analysis")
         print(f"{'='*80}")
         
         overall_start = time.time()
@@ -56,7 +58,7 @@ class PredictorV2(BasePredictor):
         )
         
         if video_metadata.video_time_duration is None:
-            print(f"\n⚠️  No duration - metadata-only decision\n")
+            print(f"\n  No duration - metadata-only decision\n")
             
             context = DecisionContext(
                 segment_number=1,
@@ -85,7 +87,7 @@ class PredictorV2(BasePredictor):
         duration = video_metadata.video_time_duration
         
         if duration < 6 or duration > 180:
-            print(f"\n⏭️  Duration {duration}s out of range - SKIP\n")
+            print(f"\n  Duration {duration}s out of range - SKIP\n")
             
             final_actions = ["skip"]
             
@@ -97,7 +99,7 @@ class PredictorV2(BasePredictor):
             
             return final_actions
         
-        print(f"\n📹 Video Duration: {duration}s")
+        print(f" Video Duration: {duration}s")
         
         processing_result = self.video_processor.prepare_video_processing(
             video_source=video_source,
@@ -116,16 +118,16 @@ class PredictorV2(BasePredictor):
             
             return final_actions
         
-        print(f"\n🔬 Analyzing {len(processing_result.segments)} segments\n")
+        print(f" Analyzing {len(processing_result.segments)} segments\n")
         
         all_actions = []
         segment_times = []
         segment_analyses = []
         
         for idx, (start, end) in enumerate(processing_result.segments, 1):
-            print(f"{'─'*80}")
-            print(f"📊 Segment {idx}/{len(processing_result.segments)} ({start:.1f}s - {end:.1f}s)")
-            print(f"{'─'*80}\n")
+            print(f"{'-'*80}")
+            print(f" Segment {idx}/{len(processing_result.segments)} ({start:.1f}s - {end:.1f}s)")
+            print(f"{'-'*80}\n")
             
             segment_start = time.time()
             
@@ -151,7 +153,7 @@ class PredictorV2(BasePredictor):
                 )
                 segment_analyses.append(segment_analysis)
             except Exception as e:
-                print(f"      ⚠️  Analysis failed: {e}")
+                print(f"        Analysis failed: {e}")
                 segment_analysis = None
             
             self._cleanup_file(video_file)
@@ -174,21 +176,26 @@ class PredictorV2(BasePredictor):
             
             actions = DecisionEngine.decide(context)
             
-            print(f"\n      🎯 Decision: {[a.to_string() for a in actions]}")
-            print(f"      ⏱️  Segment time: {segment_elapsed:.2f}s\n")
+            print(f"\n       Decision: {[a.to_string() for a in actions]}")
+            print(f"        Segment time: {segment_elapsed:.2f}s\n")
             
             all_actions.extend(actions)
             
             if any(a.action_type == PredictedActionType.SKIP for a in actions):
-                print(f"🛑 SKIP detected - stopping analysis\n")
+                print(f" SKIP detected - stopping analysis\n")
                 break
         
         all_actions = self._adjust_continue_watching(all_actions, segment_times)
         
+        has_skip = any(a.action_type == PredictedActionType.SKIP for a in all_actions)
+        if not has_skip:
+            print(f" Adding final SKIP action")
+            all_actions.append(PredictedAction(PredictedActionType.SKIP))
+        
         total_time = time.time() - overall_start
         
         print(f"{'='*80}")
-        print(f"✅ Complete in {total_time:.2f}s")
+        print(f" Complete in {total_time:.2f}s")
         
         final_actions = DecisionEngine.convert_actions_to_response(all_actions)
         
@@ -225,9 +232,9 @@ class PredictorV2(BasePredictor):
                 user_state_json=user_state_json,
                 segment_analyses=segment_analyses
             )
-            print(f"📊 Video logged to database")
+            print(f" Video logged to database")
         except Exception as e:
-            print(f"⚠️  Failed to log video: {e}")
+            print(f"  Failed to log video: {e}")
     
     def _adjust_continue_watching(
         self,

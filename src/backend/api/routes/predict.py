@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status, Depends
+from fastapi import APIRouter, status, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -11,6 +11,7 @@ from schemas.predict import (
 from domain.video import VideoSource, VideoPlatform
 from services.predictor.registry import PredictorRegistry
 from services.agent_service import AgentService
+from domain.errors import SessionNotFoundError, SessionNotRunningError
 
 router = APIRouter()
 
@@ -29,7 +30,10 @@ async def predict_actions(
     session = result.scalar_one_or_none()
     
     if not session:
-        raise ValueError(f"Session {payload.session_id} not found")
+        raise SessionNotFoundError(str(payload.session_id))
+    
+    if session.state != "running":
+        raise SessionNotRunningError(str(payload.session_id))
     
     agent = await AgentService.get_agent(db, session.agent_id)
     
@@ -45,16 +49,12 @@ async def predict_actions(
             video_source=video_source,
             video_metadata=payload.video_metadata,
             user_state_json=agent.state_file_data,
-            check_video_existence=agent.check_video_existence,
             db=db,
             session_id=payload.session_id,
             agent_id=session.agent_id,
         )
     else:
-        predicted_actions = predictor.predict(
-            video_source,
-            check_video_existence=agent.check_video_existence
-        )
+        predicted_actions = predictor.predict(video_source)
 
     return PredictActionsResponse(
         predicted_actions=predicted_actions

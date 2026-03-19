@@ -7,6 +7,7 @@ from services.video_processor.frame_extractor import FrameExtractor
 from services.video_processor.music_detector import MusicDetector, MusicDetectionResult
 from services.video_processor.segment_calculator import SegmentCalculator
 from services.ai.ai_analyzer import AIAnalyzer, AIAnalysisResult
+from services.ai.ai_limiter import AILimiter
 
 @dataclass
 class SegmentAnalysisResult:
@@ -36,7 +37,7 @@ class SegmentAnalyzer:
         user_state_json: str
     ) -> SegmentAnalysisResult:
         
-        print(f"   🔄 Deep Analysis in progress")
+        print(f"    Deep Analysis in progress")
         
         analysis_start = time.time()
         
@@ -52,24 +53,26 @@ class SegmentAnalyzer:
         
         frames, music = await asyncio.gather(frames_task, music_task)
         
-        print(f"      🖼️  Frames extracted: {len(frames)} frames")
-        print(f"      🎵 Music: {music}")
+        print(f"        Frames extracted: {len(frames)} frames")
+        print(f"       Music: {music}")
         
         music_str = str(music) if music.detected else None
         
-        ai_result = await self.ai_analyzer.analyze_segment(
-            segment_number=segment_number,
-            frames_base64=frames,
-            description=description,
-            hashtags=hashtags,
-            music=music_str,
-            user_state_json=user_state_json
+        ai_result = await AILimiter.execute(
+            self.ai_analyzer.analyze_segment(
+                segment_number=segment_number,
+                frames_base64=frames,
+                description=description,
+                hashtags=hashtags,
+                music=music_str,
+                user_state_json=user_state_json
+            )
         )
         
         analysis_time = time.time() - analysis_start
         
-        print(f"      ⏱️  Segment duration: {end_time - start_time:.1f}s")
-        print(f"      ⚡ Total analysis time: {analysis_time:.2f}s\n")
+        print(f"       Segment duration: {end_time - start_time:.1f}s")
+        print(f"       Total analysis time: {analysis_time:.2f}s\n")
         
         return SegmentAnalysisResult(
             segment_number=segment_number,

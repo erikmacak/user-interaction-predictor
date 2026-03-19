@@ -15,7 +15,7 @@ async def reset_admin_password():
             admin = result.scalar_one_or_none()
             
             if not admin:
-                print("❌ Admin user not found!")
+                print(" Admin user not found!")
                 print("   Run: python -m scripts.create_admin")
                 return
             
@@ -26,16 +26,16 @@ async def reset_admin_password():
             db.add(admin)
             await db.commit()
             
-            print("✅ Admin password reset successfully!")
+            print(" Admin password reset successfully!")
             print("=" * 50)
             print(f"   Username: {admin.username}")
             print(f"   Password: {settings.INITIAL_ADMIN_PASSWORD}")
             print("=" * 50)
-            print("⚠️  CHANGE PASSWORD AFTER LOGIN!")
+            print("  CHANGE PASSWORD AFTER LOGIN!")
             
         except Exception as e:
             await db.rollback()
-            print(f"❌ Error resetting password: {e}")
+            print(f" Error resetting password: {e}")
             raise
 
 if __name__ == "__main__":

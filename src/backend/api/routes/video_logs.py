@@ -81,9 +81,7 @@ async def export_all_agent_data(
     agent_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
-):
-    """Export all video logs for an agent across all sessions as CSV."""
-    
+):  
     logs = await VideoLogService.get_logs_by_agent(db, agent_id)
     
     if not logs:

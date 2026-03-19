@@ -22,8 +22,8 @@ class InitialAnalyzer:
     ) -> InitialAnalysisResult:
 
         if verbose:
-            print(f"\n🔍 Initial Analysis (First Segment Only)")
-            print(f"{'─'*80}")
+            print(f" Initial Analysis (First Segment Only)")
+            print(f"{'-'*80}")
         
         engagement_task = asyncio.create_task(
             InitialAnalyzer._analyze_engagement(video_metadata, verbose)
@@ -42,7 +42,7 @@ class InitialAnalyzer:
         )
         
         if verbose:
-            print(f"{'─'*80}\n")
+            print(f"{'-'*80}\n")
         
         return InitialAnalysisResult(
             engagement=engagement_result,
@@ -60,14 +60,14 @@ class InitialAnalyzer:
         )
         
         if verbose:
-            print(f"📊 Engagement Analysis:")
-            print(f"   • Likes: {video_metadata.likes_count or 0:,}")
-            print(f"   • Comments: {video_metadata.comments_count or 0:,}")
-            print(f"   • Reposts: {video_metadata.reposts_count or 0:,}")
-            print(f"   • Shares: {video_metadata.shares_count or 0:,}")
-            print(f"   • Total: {result.total_engagement:,}")
-            print(f"   • Weighted Score: {result.weighted_score:,}")
-            print(f"   • Level: {result.level}")
+            print(f" Engagement Analysis:")
+            print(f"    Likes: {video_metadata.likes_count or 0:,}")
+            print(f"    Comments: {video_metadata.comments_count or 0:,}")
+            print(f"    Reposts: {video_metadata.reposts_count or 0:,}")
+            print(f"    Shares: {video_metadata.shares_count or 0:,}")
+            print(f"    Total: {result.total_engagement:,}")
+            print(f"    Weighted Score: {result.weighted_score:,}")
+            print(f"    Level: {result.level}")
         
         return result
     
@@ -80,8 +80,8 @@ class InitialAnalyzer:
         is_favorite = AuthorChecker.is_favorite_author(video_author, user_state_json)
         
         if verbose:
-            print(f"\n👤 Author Check:")
-            print(f"   • Author: {video_author or 'Unknown'}")
-            print(f"   • Is Favorite: {'✅ Yes' if is_favorite else '❌ No'}")
+            print(f"\n Author Check:")
+            print(f"    Author: {video_author or 'Unknown'}")
+            print(f"    Is Favorite: {' Yes' if is_favorite else ' No'}")
         
         return is_favorite

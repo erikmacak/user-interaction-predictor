@@ -13,7 +13,6 @@ class Agent(Base):
     platform = Column(String(50), nullable=False)
     state = Column(String(50), nullable=False, default="offline")
     predictor_version = Column(String(50), nullable=False)
-    check_video_existence = Column(Boolean, nullable=False, default=True)
     state_file_data = Column(Text, nullable=False)
     
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)

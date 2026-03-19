@@ -15,7 +15,7 @@ async def create_admin_user():
             existing_user = result.scalar_one_or_none()
             
             if existing_user:
-                print("❌ Admin user already exists!")
+                print(" Admin user already exists!")
                 print(f"   Username: {existing_user.username}")
                 print(f"   Created: {existing_user.created_at}")
                 return
@@ -30,17 +30,17 @@ async def create_admin_user():
             await db.commit()
             await db.refresh(admin)
             
-            print("✅ Admin user created successfully!")
+            print(" Admin user created successfully!")
             print("=" * 50)
             print(f"   Username: {admin.username}")
             print(f"   Password: {settings.INITIAL_ADMIN_PASSWORD}")
             print("=" * 50)
-            print("⚠️  CHANGE PASSWORD AFTER FIRST LOGIN!")
+            print("  CHANGE PASSWORD AFTER FIRST LOGIN!")
             print("=" * 50)
             
         except Exception as e:
             await db.rollback()
-            print(f"❌ Error creating admin user: {e}")
+            print(f" Error creating admin user: {e}")
             raise
 
 if __name__ == "__main__":

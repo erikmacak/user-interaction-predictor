@@ -61,7 +61,7 @@ Expected JSON format:
             }
             
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"⚠️  Error parsing user state: {e}")
+            print(f"  Error parsing user state: {e}")
             return {
                 "preferred_emotions": [],
                 "preferred_languages": [],

@@ -8,6 +8,17 @@ from domain.errors import (
     UnsupportedPredictorVersionError,
     AlreadyAuthenticatedError,
     PasswordAlreadyChangedError,
+    SessionNotFoundError,
+    SessionNotRunningError,
+    SessionAlreadyCompletedError,
+    AgentNotFoundError,
+    AgentAlreadyExistsError,
+    AgentIsAuditingError,
+    AgentAlreadyAuditingError,
+    AgentNotAuditingError,
+    VideoDownloadError,
+    UnsupportedPlatformError,
+    InvalidUserProfileSchemaError,
 )
 
 def _get_timestamp() -> str:
@@ -33,15 +44,32 @@ def validation_exception_handler(_: Request, exc: RequestValidationError):
     )
 
 def domain_exception_handler(_: Request, exc: DomainError):
-    status_code = 404
-    error_code = "RESOURCE_NOT_FOUND"
-
-    if isinstance(exc, UnsupportedPredictorVersionError):
+    status_code = 400
+    error_code = "BAD_REQUEST"
+    
+    if isinstance(exc, (SessionNotFoundError, AgentNotFoundError)):
+        status_code = 404
+        error_code = "RESOURCE_NOT_FOUND"
+    
+    elif isinstance(exc, (
+        SessionNotRunningError,
+        SessionAlreadyCompletedError,
+        AgentIsAuditingError,
+        AgentAlreadyAuditingError,
+        AgentNotAuditingError,
+        VideoDownloadError,
+        UnsupportedPlatformError,
+        UnsupportedPredictorVersionError,
+        InvalidUserProfileSchemaError,
+    )):
         status_code = 400
-        error_code = "UNSUPPORTED_VERSION"
-    elif isinstance(exc, AlreadyAuthenticatedError):
+        error_code = exc.__class__.__name__.replace("Error", "").upper()
+        error_code = ''.join(['_' + c if c.isupper() and i > 0 else c for i, c in enumerate(error_code)]).upper().lstrip('_')
+    
+    elif isinstance(exc, (AgentAlreadyExistsError, AlreadyAuthenticatedError)):
         status_code = 409
-        error_code = "ALREADY_AUTHENTICATED"
+        error_code = "CONFLICT"
+    
     elif isinstance(exc, PasswordAlreadyChangedError):
         status_code = 403
         error_code = "PASSWORD_ALREADY_CHANGED"

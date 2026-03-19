@@ -10,22 +10,21 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { PLATFORMS } from '@/constants';
 import { Platform } from '@/types';
 import { agentsApi } from '@/lib/api/agents';
 import { EmptyState } from '@/components/layout/empty-state';
 
 export default function NewAgentPage() {
   const router = useRouter();
+
+  const [platforms, setPlatforms] = useState<string[]>([]);
   const [predictorVersions, setPredictorVersions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     platform: 'YouTube' as Platform,
     predictorVersion: 'v1',
-    checkVideoExistence: true,
   });
   const [stateFile, setStateFile] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -35,16 +34,17 @@ export default function NewAgentPage() {
     const fetchVersions = async () => {
       setIsLoading(true);
       try {
-        const versions = await agentsApi.getVersions();
-        setPredictorVersions(versions);
-        if (versions.length > 0) {
-          setFormData(prev => ({ ...prev }));
-        }
+        const [predictorVersions, platformsList] = await Promise.all([
+          agentsApi.getVersions(),
+          agentsApi.getPlatforms(),
+        ]);
+        setPredictorVersions(predictorVersions);
+        setPlatforms(platformsList);
       } catch (err: any) {
         setError('Failed to fetch agent configuration');
       } finally {
         setIsLoading(false);
-    }
+      }
     };
     fetchVersions();
   }, []);
@@ -83,30 +83,29 @@ export default function NewAgentPage() {
         name: formData.name,
         platform: formData.platform,
         predictor_version: formData.predictorVersion,
-        check_video_existence: formData.checkVideoExistence,
         state_file_data: fileContent,
       });
 
       router.push('/agents');
     } catch (err: any) {
-      setError('Failed to fetch agent configuration');
+      setError(err.message || 'Failed to create agent');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   if (isLoading) {
-      return (
-        <div className="flex h-full items-center justify-center">
-          <EmptyState
-            title="Loading system overview"
-            description="Please wait while we load system configuration"
-          />
-        </div>
-      );
-    }
+    return (
+      <div className="flex h-full items-center justify-center">
+        <EmptyState
+          title="Loading system overview"
+          description="Please wait while we load system configuration"
+        />
+      </div>
+    );
+  }
 
-  if (error) {
+  if (error && !stateFile) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
         <div className="text-center">
@@ -132,6 +131,12 @@ export default function NewAgentPage() {
           </CardDescription>
         </CardHeader>
 
+        {error && (
+          <div className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-3">
           <Input
             label="Agent Name"
@@ -153,7 +158,7 @@ export default function NewAgentPage() {
               })
             }
           >
-            {PLATFORMS.map((platform) => (
+            {platforms.map((platform) => (
               <option key={platform} value={platform}>
                 {platform}
               </option>
@@ -232,17 +237,6 @@ export default function NewAgentPage() {
               </option>
             ))}
           </Select>
-
-          <Checkbox
-            label="Check video existence"
-            checked={formData.checkVideoExistence}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                checkVideoExistence: e.target.checked,
-              })
-            }
-          />
 
           <div className="flex gap-2 pt-2">
             <Button

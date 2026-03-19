@@ -6,9 +6,10 @@ from fastapi.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
-from sqlalchemy.exc import OperationalError, ProgrammingError
+
 from core.settings import settings
 from services.predictor.registry import PredictorRegistry
+from services.ai.ai_limiter import AILimiter
 from api.routes.predict import router as predict_router
 from api.routes.auth import router as auth_router
 from api.routes.agents import router as agents_router
@@ -18,7 +19,7 @@ from api.exception_handlers import (
     validation_exception_handler,
     domain_exception_handler,
 )
-from domain.errors import DomainError, UnsupportedPredictorVersionError
+from domain.errors import DomainError
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -27,15 +28,13 @@ limiter = Limiter(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    try:
-        PredictorRegistry.get(settings.PREDICTOR_VERSION)
-        print("✅ Predictor registry initialized")
-    except UnsupportedPredictorVersionError as exc:
-        raise RuntimeError(f"Application startup failed: {exc}")
+    print("Application is starting up...")
+    
+    AILimiter.initialize(max_concurrent=2)
     
     yield
     
-    print("👋 Shutting down...")
+    print("Shutting down...")
 
 app = FastAPI(
     title=settings.APP_NAME,
@@ -54,37 +53,6 @@ app.add_middleware(
     allow_headers=["Content-Type", "Authorization", "Accept", "Cookie"],
     expose_headers=["*"],
 )
-
-@app.exception_handler(OperationalError)
-@app.exception_handler(ProgrammingError)
-async def database_exception_handler(request: Request, exc: Exception):
-    
-    error_msg = (
-        "\n" + "="*80 + "\n"
-        "❌ DATABASE ERROR DETECTED\n"
-        + "="*80 + "\n"
-        "The database schema is not initialized or migrations are missing.\n\n"
-        "Required steps to fix:\n"
-        "  1. Run migrations:     alembic upgrade head\n"
-        "  2. Create admin user:  python -m scripts.create_admin\n"
-        + "="*80 + "\n"
-    )
-    print(error_msg)
-
-    origin = request.headers.get("origin", "*")
-    
-    return JSONResponse(
-        status_code=503,
-        content={
-            "error": "Database not ready",
-            "error_code": "DATABASE_NOT_READY",
-            "detail": "Please ensure database migrations have been applied (alembic upgrade head)"
-        },
-        headers={
-            "Access-Control-Allow-Origin": origin,
-            "Access-Control-Allow-Credentials": "true",
-        }
-    )
 
 app.add_exception_handler(
     RequestValidationError,

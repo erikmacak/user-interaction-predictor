@@ -5,16 +5,22 @@ from uuid import UUID
 import json
 
 from services.predictor.registry import PredictorRegistry
+from domain.platform import PlatformRegistry
+from domain.user_profile_schema import UserProfileSchema
 
 Platform = Literal["YouTube", "TikTok", "Instagram"]
 AgentState = Literal["auditing", "offline", "banned"]
 
 class AgentCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    platform: Platform
+    platform: str
     predictor_version: str = Field(..., min_length=1, max_length=50)
-    check_video_existence: bool = True
     state_file_data: str
+    
+    @field_validator('platform')
+    @classmethod
+    def validate_platform(cls, v: str) -> str:
+        return PlatformRegistry.validate_platform(v)
     
     @field_validator('predictor_version')
     @classmethod
@@ -29,12 +35,17 @@ class AgentCreateRequest(BaseModel):
     
     @field_validator('state_file_data')
     @classmethod
-    def validate_json(cls, v: str) -> str:
+    def validate_state_file_data(cls, v: str) -> str:
         try:
             json.loads(v)
-            return v
         except json.JSONDecodeError:
             raise ValueError('state_file_data must be valid JSON')
+        
+        is_valid, error_message = UserProfileSchema.validate(v)
+        if not is_valid:
+            raise ValueError(error_message)
+        
+        return v
     
     @field_validator('name')
     @classmethod
@@ -43,11 +54,17 @@ class AgentCreateRequest(BaseModel):
 
 class AgentUpdateRequest(BaseModel):
     name: str | None = Field(None, min_length=1, max_length=255)
-    platform: Platform | None = None
+    platform: str | None = None
     predictor_version: str | None = Field(None, min_length=1, max_length=50)
-    check_video_existence: bool | None = None
-    state: Literal["offline", "banned"] | None = None
+    state: AgentState | None = None
     state_file_data: str | None = None
+    
+    @field_validator('platform')
+    @classmethod
+    def validate_platform(cls, v: str | None) -> str | None:
+        if v is not None:
+            return PlatformRegistry.validate_platform(v)
+        return v
     
     @field_validator('predictor_version')
     @classmethod
@@ -63,13 +80,17 @@ class AgentUpdateRequest(BaseModel):
     
     @field_validator('state_file_data')
     @classmethod
-    def validate_json(cls, v: str | None) -> str | None:
+    def validate_state_file_data(cls, v: str | None) -> str | None:
         if v is not None:
             try:
                 json.loads(v)
-                return v
             except json.JSONDecodeError:
                 raise ValueError('state_file_data must be valid JSON')
+            
+            is_valid, error_message = UserProfileSchema.validate(v)
+            if not is_valid:
+                raise ValueError(error_message)
+        
         return v
     
     @field_validator('name')
@@ -80,10 +101,9 @@ class AgentUpdateRequest(BaseModel):
 class AgentResponse(BaseModel):
     id: UUID
     name: str
-    platform: Platform
+    platform: str
     state: AgentState
     predictor_version: str
-    check_video_existence: bool
     created_at: datetime
     updated_at: datetime
     

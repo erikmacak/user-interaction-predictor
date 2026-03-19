@@ -16,8 +16,22 @@ from schemas.agent import (
 from schemas.common import SuccessResponse
 from services.agent_service import AgentService
 from services.predictor.registry import PredictorRegistry
+from domain.platform import PlatformRegistry
+from domain.user_profile_schema import UserProfileSchema
 
 router = APIRouter()
+
+@router.get("/user-profile-schema")
+async def get_user_profile_schema(
+    current_user: User = Depends(get_current_user_if_password_changed),
+):
+    return {"schema": UserProfileSchema.get_example_schema()}
+
+@router.get("/platforms")
+async def get_platforms(
+    current_user: User = Depends(get_current_user_if_password_changed),
+):
+    return {"platforms": PlatformRegistry.get_supported_platforms()}
 
 @router.get("/predictor-versions")
 async def get_predictor_versions(

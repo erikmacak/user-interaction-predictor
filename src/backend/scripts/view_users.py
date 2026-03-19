@@ -11,7 +11,7 @@ async def view_users():
             users = result.scalars().all()
             
             if not users:
-                print("❌ No users found in database")
+                print(" No users found in database")
                 return
             
             print("=" * 80)
@@ -29,7 +29,7 @@ async def view_users():
                 print("-" * 80)
                 
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f" Error: {e}")
 
 if __name__ == "__main__":
     asyncio.run(view_users())

@@ -15,6 +15,7 @@ from schemas.auth import (
 )
 from services.auth_service import AuthService
 from domain.models.user import User
+from fastapi import HTTPException, status
 
 router = APIRouter()
 
@@ -28,27 +29,31 @@ async def login(
     payload: LoginRequest,
     response: Response,
     db: AsyncSession = Depends(get_db),
-    _: None = Depends(ensure_not_authenticated),
 ):
+    try:
+        user, access_token = await AuthService.authenticate_user(
+            db=db,
+            password=payload.password,
+        )
     
-    user, access_token = await AuthService.authenticate_user(
-        db=db,
-        password=payload.password,
-    )
-    
-    response.set_cookie(
-        key="access_token",
-        value=access_token,
-        httponly=True,
-        secure=False,
-        samesite="lax",
-        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-    )
-    
-    return LoginResponse(
-        message="Login successful",
-        must_change_password=user.must_change_password,
-    )
+        response.set_cookie(
+            key="access_token",
+            value=access_token,
+            httponly=True,
+            secure=False,
+            samesite="lax",
+            max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        )
+        
+        return LoginResponse(
+            message="Login successful",
+            must_change_password=user.must_change_password,
+        )
+
+    except HTTPException as exc:
+        if exc.status_code == status.HTTP_401_UNAUTHORIZED:
+            response.delete_cookie(key="access_token")
+        raise exc
 
 @router.post(
     "/change-password",

@@ -3,12 +3,19 @@ from domain.video import VideoPlatform
 class DomainError(Exception):
     """Base class for domain-level errors."""
 
+class InvalidUserProfileSchemaError(DomainError):
+    def __init__(self, reason: str):
+        self.reason = reason
+        super().__init__(
+            f"Invalid user profile schema: {reason}"
+        )
+
 class UnsupportedPlatformError(DomainError):
     def __init__(self, platform: str, supported: list[str]):
         self.platform = platform
         self.supported = supported
         super().__init__(
-            f"Invalid platform '{platform}'. "
+            f"Unsupported platform '{platform}'. "
             f"Supported platforms: {', '.join(supported)}"
         )
 
@@ -24,6 +31,15 @@ class VideoAvailabilityNotImplementedError(DomainError):
         self.platform = platform
         super().__init__(
             f"Video availability check not implemented for {platform.value}"
+        )
+
+class VideoDownloadError(DomainError):
+    def __init__(self, platform: str, video_id: str, reason: str):
+        self.platform = platform
+        self.video_id = video_id
+        self.reason = reason
+        super().__init__(
+            f"Failed to download video from {platform} (ID: {video_id}): {reason}"
         )
 
 class UnsupportedPredictorVersionError(DomainError):
@@ -68,6 +84,13 @@ class AgentNotFoundError(AgentError):
             f"Agent with ID '{agent_id}' not found"
         )
 
+class AgentIsAuditingError(AgentError):
+    def __init__(self, agent_name: str):
+        self.agent_name = agent_name
+        super().__init__(
+            f"Cannot modify agent '{agent_name}' while it is running an audit session."
+        )
+
 class SessionError(DomainError):
     """Base class for session-related errors."""
 
@@ -101,4 +124,11 @@ class SessionAlreadyCompletedError(SessionError):
         super().__init__(
             f"Session '{session_id}' is already completed",
             "SESSION_ALREADY_COMPLETED"
+        )
+
+class SessionNotRunningError(SessionError):
+    def __init__(self, session_id: str):
+        self.session_id = session_id
+        super().__init__(
+            f"Session '{session_id}' is not currently running"
         )

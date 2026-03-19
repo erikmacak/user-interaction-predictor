@@ -10,11 +10,10 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { PLATFORMS } from '@/constants';
 import { Platform, AgentState } from '@/types';
 import { agentsApi, AgentResponse } from '@/lib/api/agents';
+import { EmptyState } from '@/components/layout/empty-state';
 
 interface PageProps {
   params: Promise<{ agentId: string }>;
@@ -25,6 +24,7 @@ export default function EditAgentPage({ params }: PageProps) {
   const { agentId } = use(params);
   
   const [agent, setAgent] = useState<AgentResponse | null>(null);
+  const [platforms, setPlatforms] = useState<string[]>([]);
   const [predictorVersions, setPredictorVersions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,30 +32,31 @@ export default function EditAgentPage({ params }: PageProps) {
   
   const [formData, setFormData] = useState({
     name: '',
-    platform: 'YouTube' as Platform,
+    platform: '' as Platform,
     predictorVersion: 'v1',
     state: 'offline' as AgentState,
-    checkVideoExistence: true,
   });
   const [stateFile, setStateFile] = useState<File | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
+      setError(null);
       try {
-        const [agentData, versions] = await Promise.all([
+        const [agentData, platformsList, versions] = await Promise.all([
           agentsApi.get(agentId),
+          agentsApi.getPlatforms(),
           agentsApi.getVersions(),
         ]);
         
         setAgent(agentData);
+        setPlatforms(platformsList);
         setPredictorVersions(versions);
         setFormData({
           name: agentData.name,
           platform: agentData.platform,
           predictorVersion: agentData.predictor_version,
           state: agentData.state,
-          checkVideoExistence: agentData.check_video_existence,
         });
       } catch (err: any) {
         setError(err.message || 'Failed to load agent');
@@ -96,7 +97,6 @@ export default function EditAgentPage({ params }: PageProps) {
         name: formData.name,
         platform: formData.platform,
         predictor_version: formData.predictorVersion,
-        check_video_existence: formData.checkVideoExistence,
         state: formData.state,
       };
 
@@ -117,14 +117,15 @@ export default function EditAgentPage({ params }: PageProps) {
   if (isLoading) {
     return (
       <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <p className="text-sm text-slate-600">Loading agent...</p>
-        </div>
+        <EmptyState
+          title="Loading system overview"
+          description="Please wait while we load system configuration"
+        />
       </div>
     );
   }
 
-  if (error && !agent) {
+  if (!agent) {
     return (
       <div className="flex h-full items-center justify-center">
         <div className="text-center">
@@ -176,7 +177,7 @@ export default function EditAgentPage({ params }: PageProps) {
               })
             }
           >
-            {PLATFORMS.map((platform) => (
+            {platforms.map((platform) => (
               <option key={platform} value={platform}>
                 {platform}
               </option>
@@ -269,17 +270,6 @@ export default function EditAgentPage({ params }: PageProps) {
             <option value="offline">Offline</option>
             <option value="banned">Banned</option>
           </Select>
-
-          <Checkbox
-            label="Check video existence"
-            checked={formData.checkVideoExistence}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                checkVideoExistence: e.target.checked,
-              })
-            }
-          />
 
           <div className="flex gap-2 pt-1 md:pt-2">
             <Button

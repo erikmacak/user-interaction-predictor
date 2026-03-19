@@ -5,7 +5,6 @@ export interface AgentCreateRequest {
   name: string;
   platform: Platform;
   predictor_version: string;
-  check_video_existence: boolean;
   state_file_data: string;
 }
 
@@ -13,7 +12,6 @@ export interface AgentUpdateRequest {
   name?: string;
   platform?: Platform;
   predictor_version?: string;
-  check_video_existence?: boolean;
   state?: AgentState;
   state_file_data?: string;
 }
@@ -24,7 +22,6 @@ export interface AgentResponse {
   platform: Platform;
   state: AgentState;
   predictor_version: string;
-  check_video_existence: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -35,6 +32,11 @@ export interface AgentListResponse {
 }
 
 export const agentsApi = {
+  async getPlatforms(): Promise<string[]> {
+    const response = await apiClient.get<{ platforms: string[] }>('/api/platforms');
+    return response.platforms;
+  },
+
   async getVersions(): Promise<string[]> {
     const response = await apiClient.get<{ versions: string[] }>('/api/predictor-versions');
     return response.versions;

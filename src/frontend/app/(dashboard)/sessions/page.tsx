@@ -231,53 +231,53 @@ export default function SessionsPage() {
                   key={session.id}
                   className="p-4 transition-colors hover:bg-slate-50"
                 >
-                  {/* Desktop layout */}
-                  <div className="hidden items-center justify-between md:flex">
-                    <div className="flex-1">
+                  <div className="hidden md:block">
+                    <div className="mb-2 flex items-start justify-between">
                       <p className="font-medium text-slate-900">
                         {session.agent_name}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-600">
-                        {session.agent_platform} • Started at {formatStartTime(session.started_at)}
-                      </p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                          Running
-                        </span>
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          onClick={() => handleCopySessionId(session.id)}
-                          className="h-6 px-2 text-xs"
-                        >
-                          {copiedSessionId === session.id ? 'Copied!' : 'Copy Session ID'}
-                        </Button>
-                      </div>
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                        Running
+                      </span>
                     </div>
-                    <Button
-                      variant="danger"
-                      onClick={() => handleEndSession(session.id)}
-                      className="ml-4"
-                    >
-                      Stop Session
-                    </Button>
+                    
+                    <p className="mb-2 text-xs text-slate-600">
+                      {session.agent_platform} • Started at {formatStartTime(session.started_at)}
+                    </p>
+                    
+                    <div className="flex items-center gap-2">
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        onClick={() => handleCopySessionId(session.id)}
+                        className="h-8 px-3 text-xs"
+                      >
+                        {copiedSessionId === session.id ? 'Copied!' : 'Copy Session ID'}
+                      </Button>
+                      <Button
+                        variant="danger"
+                        onClick={() => handleEndSession(session.id)}
+                        className="h-8 px-3 text-xs"
+                      >
+                        Stop Session
+                      </Button>
+                    </div>
                   </div>
 
-                  {/* Mobile layout */}
                   <div className="md:hidden">
-                    <div className="mb-3">
+                    <div className="mb-2 flex items-start justify-between">
                       <p className="font-medium text-slate-900">
                         {session.agent_name}
                       </p>
-                      <p className="mt-0.5 text-xs text-slate-600">
-                        {session.agent_platform} • Started at {formatStartTime(session.started_at)}
-                      </p>
-                      <div className="mt-2">
-                        <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
-                          Running
-                        </span>
-                      </div>
+                      <span className="inline-flex items-center rounded-full bg-green-100 px-2 py-1 text-xs font-medium text-green-700">
+                        Running
+                      </span>
                     </div>
+                    
+                    <p className="mb-3 text-xs text-slate-600">
+                      {session.agent_platform} • Started at {formatStartTime(session.started_at)}
+                    </p>
+                    
                     <div className="flex gap-2">
                       <Button
                         type="button"

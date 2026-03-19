@@ -1,6 +1,7 @@
 'use client';
 
 import { use, useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
   Card,
@@ -11,12 +12,16 @@ import {
 import { Select } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { videoLogsApi, SessionData } from '@/lib/api/video_logs';
+import { EmptyState } from '@/components/layout/empty-state';
+import { agentsApi, AgentResponse } from '@/lib/api/agents';
 
 interface PageProps {
   params: Promise<{ agentId: string }>;
 }
 
 export default function AuditDataPage({ params }: PageProps) {
+  const router = useRouter();
+  const [agent, setAgent] = useState<AgentResponse | null>(null);
   const { agentId } = use(params);
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>('');
@@ -33,6 +38,9 @@ export default function AuditDataPage({ params }: PageProps) {
     setError(null);
     
     try {
+      const agentData = await agentsApi.get(agentId);
+      setAgent(agentData);
+
       const sessionsData = await videoLogsApi.getAgentSessions(agentId);
       setSessions(sessionsData);
       
@@ -40,8 +48,7 @@ export default function AuditDataPage({ params }: PageProps) {
         setSelectedSession(sessionsData[0].session_id);
       }
     } catch (err: any) {
-      console.error('Failed to load sessions:', err);
-      setError('Failed to load audit sessions');
+      setError(err.message || 'Failed to load audit sessions');
     } finally {
       setIsLoading(false);
     }
@@ -82,8 +89,7 @@ export default function AuditDataPage({ params }: PageProps) {
         document.body.removeChild(a);
       }
     } catch (err: any) {
-      console.error('Download failed:', err);
-      setError('Failed to download data');
+      setError(err.message || 'Failed to download data');
     } finally {
       setIsDownloading(false);
     }
@@ -91,35 +97,26 @@ export default function AuditDataPage({ params }: PageProps) {
 
   if (isLoading) {
     return (
-      <div className="flex min-h-[60vh] items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-medium text-slate-900">
-            Loading...
-          </h2>
-        </div>
+      <div className="flex h-full items-center justify-center">
+        <EmptyState
+          title="Loading system overview"
+          description="Please wait while we load system configuration"
+        />
       </div>
     );
   }
 
-  if (error && sessions.length === 0) {
+  if (!agent) {
     return (
-      <div className="mx-auto max-w-2xl">
-        <div className="mb-6">
-          <Link href="/agents">
-            <Button variant="secondary">← Back to Agents</Button>
-          </Link>
-        </div>
-        
-        <div className="flex min-h-[60vh] items-center justify-center">
-          <div className="text-center">
-            <h2 className="text-lg font-medium text-slate-900">
-              Error
-            </h2>
-            <p className="mt-1 text-sm text-slate-600">{error}</p>
-            <Button onClick={fetchSessions} className="mt-4">
-              Try Again
-            </Button>
-          </div>
+      <div className="flex h-full items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-lg font-medium text-slate-900">
+            Agent not found
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">{error}</p>
+          <Button onClick={() => router.push('/agents')} className="mt-4">
+            Back to Agents
+          </Button>
         </div>
       </div>
     );
@@ -128,20 +125,15 @@ export default function AuditDataPage({ params }: PageProps) {
   if (sessions.length === 0) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="mb-6">
-          <Link href="/agents">
-            <Button variant="secondary">← Back to Agents</Button>
-          </Link>
-        </div>
-        
         <div className="flex min-h-[60vh] items-center justify-center">
           <div className="text-center">
             <h2 className="text-lg font-medium text-slate-900">
               No audit sessions found
             </h2>
-            <p className="mt-1 text-sm text-slate-600">
-              This agent doesn't have any audit sessions yet.
-            </p>
+            <p className="mt-1 text-sm text-slate-600">{error}</p>
+            <Button onClick={() => router.push('/agents')} className="mt-4">
+              Back to Agents
+            </Button>
           </div>
         </div>
       </div>
@@ -157,6 +149,12 @@ export default function AuditDataPage({ params }: PageProps) {
             Download collected audit data for this agent
           </CardDescription>
         </CardHeader>
+
+        {error && (
+          <div className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         <div className="space-y-4">
           <div>
@@ -194,12 +192,6 @@ export default function AuditDataPage({ params }: PageProps) {
               {isDownloading ? 'Downloading...' : 'Download All Sessions'}
             </Button>
           </div>
-
-          {error && (
-            <div className="rounded-md bg-red-50 p-4">
-              <p className="text-sm text-red-800">{error}</p>
-            </div>
-          )}
         </div>
       </Card>
     </div>
