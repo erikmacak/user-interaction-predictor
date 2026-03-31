@@ -1,33 +1,59 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from schemas.predict import (
-    PredictActionsRequest,
-    PredictActionsResponse,
-    PredictedAction,
-)
+from core.database import get_db
+from domain.errors import SessionNotFoundError, SessionNotRunningError
+from domain.models.audit_session import AuditSession
+from domain.platform import VideoPlatform
 from domain.video import VideoSource
+from schemas.predict import PredictActionsRequest, PredictActionsResponse
+from services.agent_service import AgentService
 from services.predictor.registry import PredictorRegistry
-from core.settings import settings
 
 router = APIRouter()
 
 @router.post(
     "/predict_actions",
     response_model=PredictActionsResponse,
+    status_code=status.HTTP_200_OK,
 )
-def predict_actions(payload: PredictActionsRequest) -> PredictActionsResponse:
-    try:
-        video_source = VideoSource(
-            platform=payload.platform,
-            video_id=payload.video_id,
+async def predict_actions(
+    payload: PredictActionsRequest,
+    db: AsyncSession = Depends(get_db),
+) -> PredictActionsResponse:
+    result = await db.execute(
+        select(AuditSession).where(AuditSession.id == payload.session_id)
+    )
+    session = result.scalar_one_or_none()
+    
+    if not session:
+        raise SessionNotFoundError(str(payload.session_id))
+    
+    if session.state != "running":
+        raise SessionNotRunningError(str(payload.session_id))
+    
+    agent = await AgentService.get_agent(db, session.agent_id)
+    
+    video_source = VideoSource(
+        platform=VideoPlatform(agent.platform),
+        video_id=payload.video_metadata.video_id,
+    )
+    
+    predictor = PredictorRegistry.get(agent.predictor_version)
+    
+    if agent.predictor_version == "v2":
+        predicted_actions = await predictor.predict_with_context(
+            video_source=video_source,
+            video_metadata=payload.video_metadata,
+            user_state_json=agent.state_file_data,
+            db=db,
+            session_id=payload.session_id,
+            agent_id=session.agent_id,
         )
-        predictor = PredictorRegistry.get(settings.PREDICTOR_VERSION)
+    else:
         predicted_actions = predictor.predict(video_source)
-    except ValueError as exc:
-        raise HTTPException(status_code=400, detail=str(exc))
 
     return PredictActionsResponse(
-        predicted_actions=[
-            PredictedAction(action=action) for action in predicted_actions
-        ]
+        predicted_actions=predicted_actions
     )

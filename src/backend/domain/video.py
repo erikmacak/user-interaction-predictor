@@ -1,10 +1,6 @@
 from dataclasses import dataclass
-from enum import Enum
 
-class VideoPlatform(str, Enum):
-    INSTAGRAM = "Instagram"
-    TIKTOK = "TikTok"
-    YOUTUBE = "YouTube"
+from domain.platform import VideoPlatform
 
 @dataclass(frozen=True)
 class VideoSource:
