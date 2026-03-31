@@ -1,43 +1,39 @@
-from fastapi import APIRouter, Depends, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-from uuid import UUID
 from typing import Optional
+from uuid import UUID
 
-from core.database import get_db
+from fastapi import APIRouter, Depends, Query, Request, status
+from slowapi import Limiter
+from slowapi.util import get_remote_address
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from api.deps import get_current_user_if_password_changed
+from core.database import get_db
 from domain.models.user import User
+from domain.platform import PlatformRegistry
 from schemas.agent import (
     AgentCreateRequest,
-    AgentUpdateRequest,
-    AgentResponse,
     AgentListResponse,
-    AgentState,
+    AgentResponse,
+    AgentUpdateRequest,
 )
 from schemas.common import SuccessResponse
 from services.agent_service import AgentService
 from services.predictor.registry import PredictorRegistry
-from domain.platform import PlatformRegistry
-from domain.user_profile_schema import UserProfileSchema
 
 router = APIRouter()
-
-@router.get("/user-profile-schema")
-async def get_user_profile_schema(
-    current_user: User = Depends(get_current_user_if_password_changed),
-):
-    return {"schema": UserProfileSchema.get_example_schema()}
+limiter = Limiter(key_func=get_remote_address)
 
 @router.get("/platforms")
 async def get_platforms(
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> dict[str, list[str]]:
     return {"platforms": PlatformRegistry.get_supported_platforms()}
 
 @router.get("/predictor-versions")
 async def get_predictor_versions(
     current_user: User = Depends(get_current_user_if_password_changed),
-):
-    return {"versions": list(PredictorRegistry._predictors.keys())}
+) -> dict[str, list[str]]:
+    return {"versions": list(PredictorRegistry.get_supported_versions())}
 
 @router.post(
     "/agents",
@@ -48,7 +44,7 @@ async def create_agent(
     data: AgentCreateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> AgentResponse:
     agent = await AgentService.create_agent(db, data)
     return agent
 
@@ -57,7 +53,7 @@ async def list_agents(
     state: Optional[str] = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> AgentListResponse:
     agents = await AgentService.list_agents(db, state=state)
     total = await AgentService.get_total_count(db, state=state)
     
@@ -71,7 +67,7 @@ async def get_agent(
     agent_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> AgentResponse:
     agent = await AgentService.get_agent(db, agent_id)
     return agent
 
@@ -81,15 +77,17 @@ async def update_agent(
     data: AgentUpdateRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> AgentResponse:
     agent = await AgentService.update_agent(db, agent_id, data)
     return agent
 
 @router.delete("/agents/{agent_id}", response_model=SuccessResponse)
+@limiter.limit("5/minute")
 async def delete_agent(
+    request: Request,
     agent_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> SuccessResponse:
     await AgentService.delete_agent(db, agent_id)
     return SuccessResponse(message="Agent deleted successfully")

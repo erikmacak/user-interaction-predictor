@@ -1,5 +1,6 @@
 export type Platform = 'YouTube' | 'TikTok' | 'Instagram';
 export type AgentState = 'auditing' | 'offline' | 'banned';
+export type SessionState = 'running' | 'completed';
 
 export interface Agent {
   id: string;
@@ -7,19 +8,16 @@ export interface Agent {
   platform: Platform;
   state: AgentState;
   predictorVersion: string;
-  checkVideoExistence: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface AuditSession {
   id: string;
-  name: string;
-  agentId: string;
-}
-
-export interface RunningAuditSession {
-  id: string;
   agentId: string;
   agentName: string;
+  agentPlatform: Platform;
+  state: SessionState;
   startedAt: string;
-  verificationKey: string;
+  endedAt: string | null;
 }

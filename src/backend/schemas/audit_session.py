@@ -1,9 +1,15 @@
-from pydantic import BaseModel, field_serializer
 from datetime import datetime
 from uuid import UUID
 
+from pydantic import BaseModel, ConfigDict, Field
+
 class AuditSessionStartRequest(BaseModel):
     agent_id: UUID
+    
+    model_config = ConfigDict(
+        frozen=True,
+        extra="forbid",
+    )
 
 class AuditSessionResponse(BaseModel):
     id: UUID
@@ -14,12 +20,13 @@ class AuditSessionResponse(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     
-    @field_serializer('id', 'agent_id')
-    def serialize_uuid(self, value: UUID, _info) -> str:
-        return str(value)
-    
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(
+        from_attributes=True,
+        json_encoders={UUID: str},
+    )
 
 class AuditSessionListResponse(BaseModel):
-    sessions: list[AuditSessionResponse]
-    total: int
+    sessions: list[AuditSessionResponse] = Field(default_factory=list)
+    total: int = Field(..., ge=0)
+    
+    model_config = ConfigDict(frozen=True)

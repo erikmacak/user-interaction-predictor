@@ -1,6 +1,17 @@
 import { ReactNode } from 'react';
 import { cn } from '@/lib/utils/cn';
 
+const DIALOG_STYLES = {
+  OVERLAY: 'fixed inset-0 bg-black/50',
+  CONTAINER: 'fixed inset-0 z-50 flex items-center justify-center p-4',
+  CONTENT_WRAPPER: 'relative z-50 w-full',
+  CONTENT: 'mx-auto w-full max-w-md rounded-lg bg-white p-6 shadow-lg',
+  HEADER: 'mb-4',
+  TITLE: 'text-lg font-semibold text-slate-900',
+  DESCRIPTION: 'mt-2 text-sm text-slate-600',
+  FOOTER: 'mt-6 flex justify-end gap-2',
+} as const;
+
 interface DialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -11,13 +22,12 @@ export function Dialog({ open, onOpenChange, children }: DialogProps) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div className={DIALOG_STYLES.CONTAINER}>
       <div
-        className="fixed inset-0 bg-black/50"
+        className={DIALOG_STYLES.OVERLAY}
         onClick={() => onOpenChange(false)}
       />
-
-      <div className="relative z-50 w-full">{children}</div>
+      <div className={DIALOG_STYLES.CONTENT_WRAPPER}>{children}</div>
     </div>
   );
 }
@@ -29,12 +39,7 @@ interface DialogContentProps {
 
 export function DialogContent({ children, className }: DialogContentProps) {
   return (
-    <div
-      className={cn(
-        'mx-auto w-full max-w-md rounded-lg bg-white p-6 shadow-lg',
-        className
-      )}
-    >
+    <div className={cn(DIALOG_STYLES.CONTENT, className)}>
       {children}
     </div>
   );
@@ -45,7 +50,7 @@ interface DialogHeaderProps {
 }
 
 export function DialogHeader({ children }: DialogHeaderProps) {
-  return <div className="mb-4">{children}</div>;
+  return <div className={DIALOG_STYLES.HEADER}>{children}</div>;
 }
 
 interface DialogTitleProps {
@@ -53,7 +58,7 @@ interface DialogTitleProps {
 }
 
 export function DialogTitle({ children }: DialogTitleProps) {
-  return <h2 className="text-lg font-semibold text-slate-900">{children}</h2>;
+  return <h2 className={DIALOG_STYLES.TITLE}>{children}</h2>;
 }
 
 interface DialogDescriptionProps {
@@ -61,7 +66,7 @@ interface DialogDescriptionProps {
 }
 
 export function DialogDescription({ children }: DialogDescriptionProps) {
-  return <p className="mt-2 text-sm text-slate-600">{children}</p>;
+  return <p className={DIALOG_STYLES.DESCRIPTION}>{children}</p>;
 }
 
 interface DialogFooterProps {
@@ -69,5 +74,5 @@ interface DialogFooterProps {
 }
 
 export function DialogFooter({ children }: DialogFooterProps) {
-  return <div className="mt-6 flex justify-end gap-2">{children}</div>;
+  return <div className={DIALOG_STYLES.FOOTER}>{children}</div>;
 }

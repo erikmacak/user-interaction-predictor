@@ -1,5 +1,7 @@
 import { redirect } from 'next/navigation';
 
+const DEFAULT_ROUTE = '/dashboard';
+
 export default function RootPage() {
-  redirect('/dashboard');
+  redirect(DEFAULT_ROUTE);
 }

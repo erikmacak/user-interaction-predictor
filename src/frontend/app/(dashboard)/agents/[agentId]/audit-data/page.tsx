@@ -1,8 +1,7 @@
 'use client';
 
-import { use, useState, useEffect } from 'react';
+import { use, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import {
   Card,
   CardHeader,
@@ -19,77 +18,105 @@ interface PageProps {
   params: Promise<{ agentId: string }>;
 }
 
+const PAGE_TEXT = {
+  CARD_TITLE: 'Download Audit Data',
+  CARD_DESCRIPTION: 'Download collected audit data for this agent',
+  LABEL_SESSION: 'Select Audit Session',
+  BUTTON_DOWNLOAD_SESSION: 'Download Selected Session',
+  BUTTON_DOWNLOAD_ALL: 'Download All Sessions',
+  BUTTON_DOWNLOADING: 'Downloading...',
+  LOADING_TITLE: 'Loading system overview',
+  LOADING_DESCRIPTION: 'Please wait while we load system configuration',
+} as const;
+
+const FILE_NAMES = {
+  ALL_DATA: (agentId: string) => `agent_${agentId}_all_data.csv`,
+  SESSION_DATA: (date: string) => `session_${date.replace(/-/g, '')}_data.csv`,
+  SESSION_DATA_FALLBACK: (sessionId: string) => `session_${sessionId}_data.csv`,
+} as const;
+
+function generateSessionLabel(session: SessionData): string {
+  return `${session.date} (${session.video_count} videos)`;
+}
+
+function triggerFileDownload(blob: Blob, filename: string): void {
+  const url = window.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(anchor);
+}
+
 export default function AuditDataPage({ params }: PageProps) {
   const router = useRouter();
-  const [agent, setAgent] = useState<AgentResponse | null>(null);
   const { agentId } = use(params);
+
+  const [agent, setAgent] = useState<AgentResponse | null>(null);
   const [sessions, setSessions] = useState<SessionData[]>([]);
   const [selectedSession, setSelectedSession] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSessions();
-  }, [agentId]);
-
-  const fetchSessions = async () => {
+  const fetchSessions = useCallback(async () => {
     setIsLoading(true);
     setError(null);
-    
-    try {
-      const agentData = await agentsApi.get(agentId);
-      setAgent(agentData);
 
-      const sessionsData = await videoLogsApi.getAgentSessions(agentId);
+    try {
+      const [agentData, sessionsData] = await Promise.all([
+        agentsApi.get(agentId),
+        videoLogsApi.getAgentSessions(agentId),
+      ]);
+
+      setAgent(agentData);
       setSessions(sessionsData);
-      
+
       if (sessionsData.length > 0) {
         setSelectedSession(sessionsData[0].session_id);
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load audit sessions');
+      setError(err.message);
     } finally {
       setIsLoading(false);
     }
+  }, [agentId]);
+
+  useEffect(() => {
+    fetchSessions();
+  }, [fetchSessions]);
+
+  const downloadSelectedSession = async () => {
+    if (!selectedSession) return;
+
+    const blob = await videoLogsApi.downloadSessionData(agentId, selectedSession);
+    const session = sessions.find((s) => s.session_id === selectedSession);
+    const filename = session
+      ? FILE_NAMES.SESSION_DATA(session.date)
+      : FILE_NAMES.SESSION_DATA_FALLBACK(selectedSession);
+
+    triggerFileDownload(blob, filename);
+  };
+
+  const downloadAllSessions = async () => {
+    const blob = await videoLogsApi.downloadAllData(agentId);
+    const filename = FILE_NAMES.ALL_DATA(agentId);
+    triggerFileDownload(blob, filename);
   };
 
   const handleDownload = async (downloadAll: boolean = false) => {
     setIsDownloading(true);
-    
+
     try {
       if (downloadAll) {
-        const blob = await videoLogsApi.downloadAllData(agentId);
-        
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `agent_${agentId}_all_data.csv`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        await downloadAllSessions();
       } else {
-        if (!selectedSession) return;
-        
-        const blob = await videoLogsApi.downloadSessionData(agentId, selectedSession);
-        
-        const session = sessions.find((s) => s.session_id === selectedSession);
-        const filename = session 
-          ? `session_${session.date.replace(/-/g, '')}_data.csv`
-          : `session_${selectedSession}_data.csv`;
-        
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        await downloadSelectedSession();
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to download data');
+      setError(err.message);
     } finally {
       setIsDownloading(false);
     }
@@ -99,41 +126,22 @@ export default function AuditDataPage({ params }: PageProps) {
     return (
       <div className="flex h-full items-center justify-center">
         <EmptyState
-          title="Loading system overview"
-          description="Please wait while we load system configuration"
+          title={PAGE_TEXT.LOADING_TITLE}
+          description={PAGE_TEXT.LOADING_DESCRIPTION}
         />
       </div>
     );
   }
 
-  if (!agent) {
-    return (
-      <div className="flex h-full items-center justify-center">
-        <div className="text-center">
-          <h2 className="text-lg font-medium text-slate-900">
-            Agent not found
-          </h2>
-          <p className="mt-1 text-sm text-slate-600">{error}</p>
-          <Button onClick={() => router.push('/agents')} className="mt-4">
-            Back to Agents
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  if (sessions.length === 0) {
+  if (error) {
     return (
       <div className="mx-auto max-w-2xl">
-        <div className="flex min-h-[60vh] items-center justify-center">
+        <div className="flex h-full items-center justify-center">
           <div className="text-center">
             <h2 className="text-lg font-medium text-slate-900">
-              No audit sessions found
+              Error! Something went wrong.
             </h2>
             <p className="mt-1 text-sm text-slate-600">{error}</p>
-            <Button onClick={() => router.push('/agents')} className="mt-4">
-              Back to Agents
-            </Button>
           </div>
         </div>
       </div>
@@ -144,22 +152,14 @@ export default function AuditDataPage({ params }: PageProps) {
     <div className="mx-auto max-w-2xl">
       <Card>
         <CardHeader>
-          <CardTitle>Download Audit Data</CardTitle>
-          <CardDescription>
-            Download collected audit data for this agent
-          </CardDescription>
+          <CardTitle>{PAGE_TEXT.CARD_TITLE}</CardTitle>
+          <CardDescription>{PAGE_TEXT.CARD_DESCRIPTION}</CardDescription>
         </CardHeader>
-
-        {error && (
-          <div className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Select Audit Session
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              {PAGE_TEXT.LABEL_SESSION}
             </label>
             <Select
               value={selectedSession}
@@ -168,7 +168,7 @@ export default function AuditDataPage({ params }: PageProps) {
             >
               {sessions.map((session) => (
                 <option key={session.session_id} value={session.session_id}>
-                  {session.date} ({session.video_count} videos)
+                  {generateSessionLabel(session)}
                 </option>
               ))}
             </Select>
@@ -180,7 +180,9 @@ export default function AuditDataPage({ params }: PageProps) {
               className="w-full"
               disabled={!selectedSession || isDownloading}
             >
-              {isDownloading ? 'Downloading...' : 'Download Selected Session'}
+              {isDownloading
+                ? PAGE_TEXT.BUTTON_DOWNLOADING
+                : PAGE_TEXT.BUTTON_DOWNLOAD_SESSION}
             </Button>
 
             <Button
@@ -189,7 +191,9 @@ export default function AuditDataPage({ params }: PageProps) {
               className="w-full"
               disabled={isDownloading}
             >
-              {isDownloading ? 'Downloading...' : 'Download All Sessions'}
+              {isDownloading
+                ? PAGE_TEXT.BUTTON_DOWNLOADING
+                : PAGE_TEXT.BUTTON_DOWNLOAD_ALL}
             </Button>
           </div>
         </div>

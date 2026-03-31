@@ -1,21 +1,23 @@
+from uuid import UUID
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-from typing import List, Optional
-from uuid import UUID
 
 from domain.models.agent import Agent
 from schemas.agent import AgentCreateRequest, AgentUpdateRequest
 from domain.errors import AgentAlreadyExistsError, AgentNotFoundError, AgentIsAuditingError
 
 class AgentService:
+    AUDITING_STATE = "auditing"
+    OFFLINE_STATE = "offline"
     
     @staticmethod
     async def create_agent(db: AsyncSession, data: AgentCreateRequest) -> Agent:
         agent = Agent(
             name=data.name,
             platform=data.platform,
-            state="offline",
+            state=AgentService.OFFLINE_STATE,
             predictor_version=data.predictor_version,
             state_file_data=data.state_file_data,
         )
@@ -44,8 +46,8 @@ class AgentService:
     @staticmethod
     async def list_agents(
         db: AsyncSession, 
-        state: Optional[str] = None
-    ) -> List[Agent]:
+        state: str | None = None
+    ) -> list[Agent]:
         query = select(Agent)
         
         if state:
@@ -63,14 +65,10 @@ class AgentService:
         data: AgentUpdateRequest
     ) -> Agent:
         agent = await AgentService.get_agent(db, agent_id)
-
-        if agent.state == "auditing":
-            raise AgentIsAuditingError(agent.name)
         
-        update_data = data.model_dump(exclude_unset=True)
+        AgentService._validate_not_auditing(agent)
         
-        for field, value in update_data.items():
-            setattr(agent, field, value)
+        AgentService._apply_updates(agent, data)
         
         try:
             await db.flush()
@@ -83,15 +81,14 @@ class AgentService:
     @staticmethod
     async def delete_agent(db: AsyncSession, agent_id: UUID) -> None:
         agent = await AgentService.get_agent(db, agent_id)
-
-        if agent.state == "auditing":
-            raise AgentIsAuditingError(agent.name)
-
+        
+        AgentService._validate_not_auditing(agent)
+        
         await db.delete(agent)
         await db.flush()
     
     @staticmethod
-    async def get_total_count(db: AsyncSession, state: Optional[str] = None) -> int:
+    async def get_total_count(db: AsyncSession, state: str | None = None) -> int:
         query = select(func.count(Agent.id))
         
         if state:
@@ -99,3 +96,15 @@ class AgentService:
         
         result = await db.execute(query)
         return result.scalar_one()
+    
+    @staticmethod
+    def _validate_not_auditing(agent: Agent) -> None:
+        if agent.state == AgentService.AUDITING_STATE:
+            raise AgentIsAuditingError(agent.name)
+    
+    @staticmethod
+    def _apply_updates(agent: Agent, data: AgentUpdateRequest) -> None:
+        update_data = data.model_dump(exclude_unset=True)
+        
+        for field, value in update_data.items():
+            setattr(agent, field, value)

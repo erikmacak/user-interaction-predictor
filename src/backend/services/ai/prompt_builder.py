@@ -1,5 +1,41 @@
 import json
-from typing import List, Optional
+from dataclasses import dataclass
+
+@dataclass(frozen=True)
+class UserState:
+    preferred_emotions: list[str]
+    preferred_languages: list[str]
+    interest_topics: list[str]
+    
+    @classmethod
+    def from_json(cls, user_state_json: str) -> "UserState":
+        try:
+            state = json.loads(user_state_json)
+            profile = state.get("user_profile", {})
+            triggers = profile.get("retention_triggers", {})
+            
+            return cls(
+                preferred_emotions=triggers.get("preferred_emotions", []),
+                preferred_languages=triggers.get("preferred_languages", []),
+                interest_topics=triggers.get("interest_topics", []),
+            )
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"  Error parsing user state: {e}")
+            return cls(
+                preferred_emotions=[],
+                preferred_languages=[],
+                interest_topics=[],
+            )
+    
+    def emotions_as_string(self) -> str:
+        return ", ".join(self.preferred_emotions) if self.preferred_emotions else "Not specified"
+    
+    def languages_as_string(self) -> str:
+        return ", ".join(self.preferred_languages) if self.preferred_languages else "Not specified"
+    
+    def topics_as_string(self) -> str:
+        return ", ".join(self.interest_topics) if self.interest_topics else "Not specified"
+
 
 class PromptBuilder:
     
@@ -48,48 +84,23 @@ Expected JSON format:
 }}"""
     
     @staticmethod
-    def parse_user_state(user_state_json: str) -> dict:
-        try:
-            state = json.loads(user_state_json)
-            profile = state.get("user_profile", {})
-            triggers = profile.get("retention_triggers", {})
-            
-            return {
-                "preferred_emotions": triggers.get("preferred_emotions", []),
-                "preferred_languages": triggers.get("preferred_languages", []),
-                "interest_topics": triggers.get("interest_topics", []),
-            }
-            
-        except (json.JSONDecodeError, KeyError) as e:
-            print(f"  Error parsing user state: {e}")
-            return {
-                "preferred_emotions": [],
-                "preferred_languages": [],
-                "interest_topics": [],
-            }
-    
-    @staticmethod
     def build_prompt(
         user_state_json: str,
         segment_number: int,
-        description: Optional[str],
-        hashtags: Optional[List[str]],
-        music: Optional[str]
+        description: str | None,
+        hashtags: list[str] | None,
+        music: str | None
     ) -> str:
-        user_state = PromptBuilder.parse_user_state(user_state_json)
-        
-        emotions_str = ", ".join(user_state["preferred_emotions"]) if user_state["preferred_emotions"] else "Not specified"
-        languages_str = ", ".join(user_state["preferred_languages"]) if user_state["preferred_languages"] else "Not specified"
-        topics_str = ", ".join(user_state["interest_topics"]) if user_state["interest_topics"] else "Not specified"
+        user_state = UserState.from_json(user_state_json)
         
         description_str = description if description else "Not provided"
         hashtags_str = ", ".join(hashtags) if hashtags else "Not provided"
         music_str = music if music else "No music detected"
         
         return PromptBuilder.SYSTEM_PROMPT_TEMPLATE.format(
-            preferred_emotions=emotions_str,
-            preferred_languages=languages_str,
-            interest_topics=topics_str,
+            preferred_emotions=user_state.emotions_as_string(),
+            preferred_languages=user_state.languages_as_string(),
+            interest_topics=user_state.topics_as_string(),
             segment_number=segment_number,
             description=description_str,
             hashtags=hashtags_str,

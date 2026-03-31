@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import { Agent, Platform, AgentState } from '@/types';
+import { Platform, AgentState } from '@/types';
 
 export interface AgentCreateRequest {
   name: string;
@@ -31,14 +31,22 @@ export interface AgentListResponse {
   total: number;
 }
 
+interface PlatformsResponse {
+  platforms: string[];
+}
+
+interface VersionsResponse {
+  versions: string[];
+}
+
 export const agentsApi = {
   async getPlatforms(): Promise<string[]> {
-    const response = await apiClient.get<{ platforms: string[] }>('/api/platforms');
+    const response = await apiClient.get<PlatformsResponse>('/api/platforms');
     return response.platforms;
   },
 
   async getVersions(): Promise<string[]> {
-    const response = await apiClient.get<{ versions: string[] }>('/api/predictor-versions');
+    const response = await apiClient.get<VersionsResponse>('/api/predictor-versions');
     return response.versions;
   },
 
@@ -47,22 +55,19 @@ export const agentsApi = {
   },
 
   async list(state?: string): Promise<AgentListResponse> {
-    const url = state ? `/api/agents?state=${state}` : '/api/agents';
-    return apiClient.get<AgentListResponse>(url);
+    const endpoint = state ? `/api/agents?state=${state}` : '/api/agents';
+    return apiClient.get<AgentListResponse>(endpoint);
   },
 
   async get(agentId: string): Promise<AgentResponse> {
     return apiClient.get<AgentResponse>(`/api/agents/${agentId}`);
   },
 
-  async update(
-    agentId: string,
-    data: AgentUpdateRequest
-  ): Promise<AgentResponse> {
+  async update(agentId: string, data: AgentUpdateRequest): Promise<AgentResponse> {
     return apiClient.put<AgentResponse>(`/api/agents/${agentId}`, data);
   },
 
   async delete(agentId: string): Promise<void> {
     return apiClient.delete<void>(`/api/agents/${agentId}`);
   },
-};
+} as const;

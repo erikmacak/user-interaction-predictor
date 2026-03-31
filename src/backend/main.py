@@ -1,25 +1,26 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
-from fastapi.exceptions import RequestValidationError
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.util import get_remote_address
-from slowapi.errors import RateLimitExceeded
 
-from core.settings import settings
-from services.predictor.registry import PredictorRegistry
-from services.ai.ai_limiter import AILimiter
-from api.routes.predict import router as predict_router
-from api.routes.auth import router as auth_router
+from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
+from pydantic import ValidationError
+from fastapi.middleware.cors import CORSMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
+
+from api.exception_handlers import (
+    domain_error_handler,
+    validation_error_handler,
+    pydantic_validation_error_handler
+)
+from api.routes.video_logs import router as video_logs_router
 from api.routes.agents import router as agents_router
 from api.routes.audit_sessions import router as sessions_router
-from api.routes import video_logs
-from api.exception_handlers import (
-    validation_exception_handler,
-    domain_exception_handler,
-)
+from api.routes.auth import router as auth_router
+from api.routes.predict import router as predict_router
+from core.settings import settings
 from domain.errors import DomainError
+from services.ai.ai_limiter import AILimiter
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -56,20 +57,24 @@ app.add_middleware(
 
 app.add_exception_handler(
     RequestValidationError,
-    validation_exception_handler,
+    validation_error_handler
 )
 
 app.add_exception_handler(
     DomainError,
-    domain_exception_handler,
+    domain_error_handler
 )
 
-auth_router_with_limits = auth_router
-auth_router_with_limits.routes[0].endpoint = limiter.limit("5/minute")(
-    auth_router_with_limits.routes[0].endpoint
+app.add_exception_handler(
+    ValidationError, 
+    pydantic_validation_error_handler
 )
 
-app.include_router(video_logs.router, prefix="/api", tags=["Video Logs"])
+app.include_router(
+    video_logs_router, 
+    prefix="/api", 
+    tags=["Video Logs"]
+)
 
 app.include_router(
     sessions_router,

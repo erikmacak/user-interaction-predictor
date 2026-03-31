@@ -6,10 +6,8 @@ Create Date: 2026-03-03 21:12:48.056059
 
 """
 from typing import Sequence, Union
-
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 revision: str = 'ac79b66b3a90'
 down_revision: Union[str, Sequence[str], None] = '5e9cc3ded3fc'
@@ -44,7 +42,6 @@ def upgrade() -> None:
     
     op.create_index('ix_video_logs_session_id', 'video_logs', ['session_id'])
     op.create_index('ix_video_logs_agent_id', 'video_logs', ['agent_id'])
-
 
 def downgrade() -> None:
     op.drop_index('ix_video_logs_agent_id', table_name='video_logs')

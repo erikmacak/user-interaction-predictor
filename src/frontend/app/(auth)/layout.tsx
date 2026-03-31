@@ -1,9 +1,14 @@
 import { ReactNode } from 'react';
 
-export default function AuthLayout({ children }: { children: ReactNode }) {
-  return (
-    <div className="flex h-full min-h-[100dvh] items-center justify-center overflow-auto bg-slate-50">
-      {children}
-    </div>
-  );
+const AUTH_LAYOUT_STYLES = [
+  'flex h-full min-h-[100dvh] items-center justify-center',
+  'overflow-auto bg-slate-50',
+].join(' ');
+
+interface AuthLayoutProps {
+  children: ReactNode;
+}
+
+export default function AuthLayout({ children }: AuthLayoutProps) {
+  return <div className={AUTH_LAYOUT_STYLES}>{children}</div>;
 }

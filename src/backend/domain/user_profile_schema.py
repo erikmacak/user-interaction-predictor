@@ -1,8 +1,7 @@
-from typing import List, Dict, Any
 import json
+from typing import Any
 
 class UserProfileSchema:
-    
     REQUIRED_STRUCTURE = {
         "user_profile": {
             "user_email": str,
@@ -18,74 +17,83 @@ class UserProfileSchema:
         }
     }
     
+    _PROFILE_FIELDS = {
+        "user_email": str,
+        "gender": str,
+        "country_code": str,
+        "date_of_birth": str,
+        "favorite_authors": list,
+        "retention_triggers": dict,
+    }
+    
+    _TRIGGER_FIELDS = {
+        "preferred_emotions": list,
+        "preferred_languages": list,
+        "interest_topics": list,
+    }
+    
     @classmethod
     def validate(cls, json_str: str) -> tuple[bool, str | None]:
-
-        try:
-            data = json.loads(json_str)
-        except json.JSONDecodeError as e:
-            return False, f"Invalid JSON format: {str(e)}"
+        data = cls._parse_json(json_str)
+        if isinstance(data, str):
+            return False, data
         
-        if "user_profile" not in data:
-            return False, "Missing required field: 'user_profile'"
+        profile = cls._validate_root_structure(data)
+        if isinstance(profile, str):
+            return False, profile
         
-        profile = data["user_profile"]
+        error = cls._validate_profile_fields(profile)
+        if error:
+            return False, error
         
-        required_fields = ["user_email", "gender", "country_code", "date_of_birth", "favorite_authors", "retention_triggers"]
-        for field in required_fields:
-            if field not in profile:
-                return False, f"Missing required field: 'user_profile.{field}'"
-
-        if not isinstance(profile.get("user_email"), str):
-            return False, "Field 'user_profile.user_email' must be a string"
-        
-        if not isinstance(profile.get("gender"), str):
-            return False, "Field 'user_profile.gender' must be a string"
-        
-        if not isinstance(profile.get("country_code"), str):
-            return False, "Field 'user_profile.country_code' must be a string"
-        
-        if not isinstance(profile.get("date_of_birth"), str):
-            return False, "Field 'user_profile.date_of_birth' must be a string"
-        
-        if not isinstance(profile.get("favorite_authors"), list):
-            return False, "Field 'user_profile.favorite_authors' must be an array"
-        
-        if not isinstance(profile.get("retention_triggers"), dict):
-            return False, "Field 'user_profile.retention_triggers' must be an object"
-        
-        triggers = profile["retention_triggers"]
-        required_trigger_fields = ["preferred_emotions", "preferred_languages", "interest_topics"]
-        
-        for field in required_trigger_fields:
-            if field not in triggers:
-                return False, f"Missing required field: 'user_profile.retention_triggers.{field}'"
-            
-            if not isinstance(triggers[field], list):
-                return False, f"Field 'user_profile.retention_triggers.{field}' must be an array"
+        error = cls._validate_retention_triggers(profile["retention_triggers"])
+        if error:
+            return False, error
         
         return True, None
     
     @classmethod
-    def get_example_schema(cls) -> Dict[str, Any]:
-        return {
-            "user_profile": {
-                "user_email": "john.techie@gmail.com",
-                "gender": "male",
-                "country_code": "us",
-                "date_of_birth": "15.03.1998",
-                "favorite_authors": ["mkbhd", "unboxtherapy", "mrwhosetheboss"],
-                "retention_triggers": {
-                    "preferred_emotions": [
-                        "curiosity",
-                        "amusement",
-                        "surprise"
-                    ],
-                    "preferred_languages": ["en"],
-                    "interest_topics": [
-                        "artificial_intelligence",
-                        "consumer_electronics"
-                    ]
-                }
-            }
+    def _parse_json(cls, json_str: str) -> dict[str, Any] | str:
+        try:
+            return json.loads(json_str)
+        except json.JSONDecodeError as e:
+            return f"Invalid JSON format: {str(e)}"
+    
+    @classmethod
+    def _validate_root_structure(cls, data: dict[str, Any]) -> dict[str, Any] | str:
+        if "user_profile" not in data:
+            return "Missing required field: 'user_profile'"
+        return data["user_profile"]
+    
+    @classmethod
+    def _validate_profile_fields(cls, profile: dict[str, Any]) -> str | None:
+        for field_name, field_type in cls._PROFILE_FIELDS.items():
+            if field_name not in profile:
+                return f"Missing required field: 'user_profile.{field_name}'"
+            
+            if not isinstance(profile[field_name], field_type):
+                type_name = cls._get_type_name(field_type)
+                return f"Field 'user_profile.{field_name}' must be {type_name}"
+        
+        return None
+    
+    @classmethod
+    def _validate_retention_triggers(cls, triggers: dict[str, Any]) -> str | None:
+        for field_name, field_type in cls._TRIGGER_FIELDS.items():
+            if field_name not in triggers:
+                return f"Missing required field: 'user_profile.retention_triggers.{field_name}'"
+            
+            if not isinstance(triggers[field_name], field_type):
+                type_name = cls._get_type_name(field_type)
+                return f"Field 'user_profile.retention_triggers.{field_name}' must be {type_name}"
+        
+        return None
+    
+    @classmethod
+    def _get_type_name(cls, field_type: type) -> str:
+        type_names = {
+            str: "a string",
+            list: "an array",
+            dict: "an object",
         }
+        return type_names.get(field_type, str(field_type))

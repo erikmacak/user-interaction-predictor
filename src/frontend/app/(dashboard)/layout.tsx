@@ -1,22 +1,31 @@
 'use client';
+
 import { ReactNode } from 'react';
 import { usePathname } from 'next/navigation';
 import { Sidebar } from '@/components/layout/sidebar';
 import { Shell } from '@/components/layout/shell';
 import { AuthGate } from '@/components/layout/auth-gate';
 
-export default function DashboardLayout({
-  children,
-}: {
+interface DashboardLayoutProps {
   children: ReactNode;
-}) {
-  const pathname = usePathname();
+}
 
-  const isCentered =
-    pathname.includes('/agents/') &&
-    (pathname.includes('/edit') ||
-      pathname.includes('/audit-data') ||
-      pathname.includes('/new'));
+const CENTERED_ROUTES = {
+  PATTERNS: ['/agents/', '/edit', '/audit-data', '/new'],
+} as const;
+
+function shouldCenterContent(pathname: string): boolean {
+  const hasAgentsPath = pathname.includes(CENTERED_ROUTES.PATTERNS[0]);
+  const hasEditPath = pathname.includes(CENTERED_ROUTES.PATTERNS[1]);
+  const hasAuditDataPath = pathname.includes(CENTERED_ROUTES.PATTERNS[2]);
+  const hasNewPath = pathname.includes(CENTERED_ROUTES.PATTERNS[3]);
+
+  return hasAgentsPath && (hasEditPath || hasAuditDataPath || hasNewPath);
+}
+
+export default function DashboardLayout({ children }: DashboardLayoutProps) {
+  const pathname = usePathname();
+  const isCentered = shouldCenterContent(pathname);
 
   return (
     <AuthGate>

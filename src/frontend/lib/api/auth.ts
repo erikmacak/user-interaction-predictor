@@ -1,4 +1,4 @@
-import { apiClient, ApiError } from './client';
+import { apiClient } from './client';
 
 export interface LoginResponse {
   message: string;
@@ -8,6 +8,20 @@ export interface LoginResponse {
 export interface ChangePasswordResponse {
   message: string;
 }
+
+export interface AuthStatusResponse {
+  isAuthenticated: boolean;
+  mustChangePassword: boolean;
+}
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+const HTTP_STATUS = {
+  OK: 200,
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  SERVER_ERROR: 500,
+} as const;
 
 export const authApi = {
   async login(password: string): Promise<LoginResponse> {
@@ -28,32 +42,36 @@ export const authApi = {
     return apiClient.post<void>('/api/auth/logout');
   },
 
-  async checkAuth(): Promise<{ isAuthenticated: boolean; mustChangePassword: boolean }> {
+  async checkAuth(): Promise<AuthStatusResponse> {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/auth/verify`, {
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify`, {
         method: 'GET',
         credentials: 'include',
       });
-      
-      if (response.status === 401) {
-        return { isAuthenticated: false, mustChangePassword: false };
-      }
-      
-      if (response.status === 403) {
-        return { isAuthenticated: true, mustChangePassword: true };
-      }
-      
-      if (response.ok) {
-        return { isAuthenticated: true, mustChangePassword: false };
-      }
-      
-      if (response.status >= 500) {
-        return { isAuthenticated: false, mustChangePassword: false };
-      }
-      
-      return { isAuthenticated: false, mustChangePassword: false };
-    } catch (error) {
+
+      return authApi._parseAuthResponse(response);
+    } catch {
       return { isAuthenticated: false, mustChangePassword: false };
     }
   },
-};
+
+  _parseAuthResponse(response: Response): AuthStatusResponse {
+    if (response.status === HTTP_STATUS.UNAUTHORIZED) {
+      return { isAuthenticated: false, mustChangePassword: false };
+    }
+
+    if (response.status === HTTP_STATUS.FORBIDDEN) {
+      return { isAuthenticated: true, mustChangePassword: true };
+    }
+
+    if (response.ok) {
+      return { isAuthenticated: true, mustChangePassword: false };
+    }
+
+    if (response.status >= HTTP_STATUS.SERVER_ERROR) {
+      return { isAuthenticated: false, mustChangePassword: false };
+    }
+
+    return { isAuthenticated: false, mustChangePassword: false };
+  },
+} as const;

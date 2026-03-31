@@ -1,8 +1,17 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
 from core.version import get_app_version
 
 class AppSettings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=True,
+        frozen=True,
+    )
+    
     APP_NAME: str = "User Interaction Predictor API"
     APP_VERSION: str = get_app_version()
     ENVIRONMENT: str = "development"
@@ -27,12 +36,5 @@ class AppSettings(BaseSettings):
     AZURE_OPENAI_API_KEY: str
     AZURE_OPENAI_DEPLOYMENT_NAME: str = "gpt-4.1-mini"
     AZURE_OPENAI_API_VERSION: str = "2024-12-01-preview"
-    
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=True,
-        frozen=True,
-    )
 
 settings = AppSettings()

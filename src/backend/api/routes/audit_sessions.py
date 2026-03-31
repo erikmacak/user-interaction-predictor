@@ -1,14 +1,15 @@
-from fastapi import APIRouter, Depends, status
-from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 
-from core.database import get_db
+from fastapi import APIRouter, Depends, status
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from api.deps import get_current_user_if_password_changed
+from core.database import get_db
 from domain.models.user import User
 from schemas.audit_session import (
-    AuditSessionStartRequest,
-    AuditSessionResponse,
     AuditSessionListResponse,
+    AuditSessionResponse,
+    AuditSessionStartRequest,
 )
 from schemas.common import SuccessResponse
 from services.audit_session_service import AuditSessionService
@@ -24,8 +25,8 @@ async def start_session(
     data: AuditSessionStartRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
-    session = await AuditSessionService.start_session(db, data)
+) -> AuditSessionResponse:
+    session = await AuditSessionService.start_session(db, data.agent_id)
     
     sessions = await AuditSessionService.list_running_sessions(db)
     session_response = next(s for s in sessions if str(s.id) == str(session.id))
@@ -36,7 +37,7 @@ async def start_session(
 async def list_running_sessions(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> AuditSessionListResponse:
     sessions = await AuditSessionService.list_running_sessions(db)
     total = await AuditSessionService.get_running_sessions_count(db)
     
@@ -50,6 +51,6 @@ async def stop_session(
     session_id: UUID,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user_if_password_changed),
-):
+) -> SuccessResponse:
     await AuditSessionService.stop_session(db, session_id)
     return SuccessResponse(message="Session stopped successfully")

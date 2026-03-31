@@ -35,8 +35,8 @@ body {
 }
 
 @supports (-webkit-touch-callout: none) {
-    html,
-    body {
-      height: -webkit-fill-available;
-    }
+  html,
+  body {
+    height: -webkit-fill-available;
   }
+}

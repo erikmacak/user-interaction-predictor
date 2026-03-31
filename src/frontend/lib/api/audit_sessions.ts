@@ -20,8 +20,10 @@ export interface AuditSessionListResponse {
 }
 
 export const auditSessionsApi = {
-  async start(data: AuditSessionStartRequest): Promise<AuditSessionResponse> {
-    return apiClient.post<AuditSessionResponse>('/api/sessions', data);
+  async start(agentId: string): Promise<AuditSessionResponse> {
+    return apiClient.post<AuditSessionResponse>('/api/sessions', {
+      agent_id: agentId,
+    });
   },
 
   async listRunning(): Promise<AuditSessionListResponse> {
@@ -31,4 +33,4 @@ export const auditSessionsApi = {
   async stop(sessionId: string): Promise<void> {
     return apiClient.post<void>(`/api/sessions/${sessionId}/stop`, {});
   },
-};
+} as const;

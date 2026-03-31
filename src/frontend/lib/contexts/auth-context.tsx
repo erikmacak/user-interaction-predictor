@@ -1,13 +1,23 @@
 'use client';
 
-import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  ReactNode,
+  useCallback,
+} from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { authApi } from '@/lib/api/auth';
 
-interface AuthContextType {
+interface AuthState {
   isAuthenticated: boolean;
-  isLoading: boolean;
   mustChangePassword: boolean;
+}
+
+interface AuthContextType extends AuthState {
+  isLoading: boolean;
   logout: () => Promise<void>;
   setAuthState: (isAuth: boolean, mustChange: boolean) => void;
   refreshAuthStatus: () => Promise<void>;
@@ -15,56 +25,82 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const PUBLIC_ROUTES = ['/login'];
+const PUBLIC_ROUTES = ['/login'] as const;
+
+const ROUTES = {
+  LOGIN: '/login',
+  CHANGE_PASSWORD: '/change-password',
+  DASHBOARD: '/dashboard',
+} as const;
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authState, setAuthStateInternal] = useState<AuthState>({
+    isAuthenticated: false,
+    mustChangePassword: false,
+  });
   const [isLoading, setIsLoading] = useState(true);
-  const [mustChangePassword, setMustChangePassword] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
+  const updateAuthState = useCallback((isAuth: boolean, mustChange: boolean) => {
+    setAuthStateInternal({
+      isAuthenticated: isAuth,
+      mustChangePassword: mustChange,
+    });
+  }, []);
+
+  const handleUnauthenticated = useCallback(() => {
+    updateAuthState(false, false);
+    if (!PUBLIC_ROUTES.includes(pathname as any)) {
+      router.push(ROUTES.LOGIN);
+    }
+  }, [pathname, router, updateAuthState]);
+
+  const handleAuthenticated = useCallback(
+    (mustChange: boolean) => {
+      updateAuthState(true, mustChange);
+
+      if (mustChange && pathname !== ROUTES.CHANGE_PASSWORD) {
+        router.push(ROUTES.CHANGE_PASSWORD);
+      } else if (!mustChange && pathname === ROUTES.CHANGE_PASSWORD) {
+        router.push(ROUTES.DASHBOARD);
+      }
+    },
+    [pathname, router, updateAuthState]
+  );
+
   const checkAuthStatus = useCallback(async () => {
-    if (PUBLIC_ROUTES.includes(pathname)) {
+    if (PUBLIC_ROUTES.includes(pathname as any)) {
       setIsLoading(true);
-      
+
       try {
-        const { isAuthenticated: isAuth, mustChangePassword: mustChange } = await authApi.checkAuth();
-        setIsAuthenticated(isAuth);
-        setMustChangePassword(mustChange);
-      } catch (error) {
-        setIsAuthenticated(false);
-        setMustChangePassword(false);
+        const { isAuthenticated, mustChangePassword } = await authApi.checkAuth();
+        updateAuthState(isAuthenticated, mustChangePassword);
+      } catch {
+        updateAuthState(false, false);
       } finally {
         setIsLoading(false);
       }
-      
+
       return;
     }
 
     setIsLoading(true);
 
     try {
-      const { isAuthenticated: isAuth, mustChangePassword: mustChange } = await authApi.checkAuth();
-      
-      setIsAuthenticated(isAuth);
-      setMustChangePassword(mustChange);
-      
-      if (!isAuth) {
-        router.push('/login');
-      } else if (mustChange && pathname !== '/change-password') {
-        router.push('/change-password');
-      } else if (!mustChange && pathname === '/change-password') {
-        router.push('/dashboard');
+      const { isAuthenticated, mustChangePassword } = await authApi.checkAuth();
+
+      if (!isAuthenticated) {
+        handleUnauthenticated();
+      } else {
+        handleAuthenticated(mustChangePassword);
       }
-    } catch (error) {
-      setIsAuthenticated(false);
-      setMustChangePassword(false);
-      router.push('/login');
+    } catch {
+      handleUnauthenticated();
     } finally {
       setIsLoading(false);
     }
-  }, [pathname, router]);
+  }, [pathname, handleUnauthenticated, handleAuthenticated, updateAuthState]);
 
   useEffect(() => {
     checkAuthStatus();
@@ -72,38 +108,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshAuthStatus = async () => {
     try {
-      const { isAuthenticated: isAuth, mustChangePassword: mustChange } = await authApi.checkAuth();
-      setIsAuthenticated(isAuth);
-      setMustChangePassword(mustChange);
-    } catch (error) {
-      setIsAuthenticated(false);
-      setMustChangePassword(false);
+      const { isAuthenticated, mustChangePassword } = await authApi.checkAuth();
+      updateAuthState(isAuthenticated, mustChangePassword);
+    } catch {
+      updateAuthState(false, false);
     }
   };
 
   const setAuthState = (isAuth: boolean, mustChange: boolean) => {
-    setIsAuthenticated(isAuth);
-    setMustChangePassword(mustChange);
+    updateAuthState(isAuth, mustChange);
   };
 
   const logout = async () => {
     try {
       await authApi.logout();
-    } catch (error) {
-      console.error('Logout error:', error);
     } finally {
-      setIsAuthenticated(false);
-      setMustChangePassword(false);
-      router.push('/login');
+      updateAuthState(false, false);
+      router.push(ROUTES.LOGIN);
     }
   };
 
   return (
     <AuthContext.Provider
       value={{
-        isAuthenticated,
+        ...authState,
         isLoading,
-        mustChangePassword,
         logout,
         setAuthState,
         refreshAuthStatus,
@@ -114,10 +143,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextType {
   const context = useContext(AuthContext);
+  
   if (context === undefined) {
     throw new Error('useAuth must be used within AuthProvider');
   }
+  
   return context;
 }

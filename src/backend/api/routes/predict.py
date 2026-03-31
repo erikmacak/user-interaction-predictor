@@ -1,17 +1,15 @@
-from fastapi import APIRouter, status, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, status
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from core.database import get_db
-from domain.models.audit_session import AuditSession
-from schemas.predict import (
-    PredictActionsRequest,
-    PredictActionsResponse,
-)
-from domain.video import VideoSource, VideoPlatform
-from services.predictor.registry import PredictorRegistry
-from services.agent_service import AgentService
 from domain.errors import SessionNotFoundError, SessionNotRunningError
+from domain.models.audit_session import AuditSession
+from domain.platform import VideoPlatform
+from domain.video import VideoSource
+from schemas.predict import PredictActionsRequest, PredictActionsResponse
+from services.agent_service import AgentService
+from services.predictor.registry import PredictorRegistry
 
 router = APIRouter()
 
